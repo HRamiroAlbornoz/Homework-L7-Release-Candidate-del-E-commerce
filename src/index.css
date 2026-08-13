@@ -671,3 +671,88 @@ h1 {
   color: var(--accent);
   font-weight: 600;
 }
+
+/* ---------------------------------------------------------------------------
+   Carrito
+   --------------------------------------------------------------------------- */
+
+/* Botón "Agregar al carrito" de cada tarjeta del catálogo. min-height de 44px
+   para cumplir el área táctil mínima en mobile: un botón más chico es difícil
+   de acertar con el dedo. */
+.add-to-cart {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 12px;
+  padding: 8px 16px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.05s ease;
+}
+
+.add-to-cart:hover {
+  opacity: 0.85;
+}
+
+.add-to-cart:active {
+  transform: scale(0.98);
+}
+
+/* Mensaje para productos sin precio cargado. Ocupa el mismo alto que el botón
+   para que las tarjetas de una misma fila no queden desalineadas. */
+.add-to-cart__unavailable {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin: 12px 0 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-style: italic;
+}
+
+/* Contador del carrito en el header. */
+.cart-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 8px;
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.cart-badge:hover {
+  color: var(--accent);
+}
+
+/* El número se muestra en una píldora con el color de acento. El contraste
+   accent/accent-contrast ya está validado en el resto de la app. */
+.cart-badge__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .add-to-cart {
+    transition: none;
+  }
+
+  .add-to-cart:active {
+    transform: none;
+  }
+}
