@@ -8,6 +8,7 @@ import {
   startAfter,
   limit,
   getDocs,
+  addDoc,
   type QueryConstraint,
   type QueryDocumentSnapshot,
   type DocumentData,
@@ -83,5 +84,44 @@ export async function listProducts(params: ProductQueryParams): Promise<ListProd
     // Nunca un catch vacío: relanzamos un Error legible para que el
     // ProductsContext lo capture y muestre el ErrorState con retry.
     throw error instanceof Error ? error : new Error("Error desconocido al consultar productos");
+  }
+}
+
+export interface CreateProductInput {
+  name: string;
+  categoryId: string;
+  price: number;
+  imageUrl: string;
+}
+
+/**
+ * Crea un producto en el catálogo. Solo la usa el panel de administración.
+ *
+ * @returns el id del documento recién creado.
+ * @throws  Error con mensaje legible; nunca el error crudo del SDK.
+ *
+ * No usa el productConverter a propósito: ese converter existe para LEER
+ * (valida con Zod lo que viene de Firestore y le agrega el id del documento), y
+ * su toFirestore lanza un error justamente para que nadie lo use al revés. Acá
+ * el documento se arma explícitamente, que además deja a la vista qué campos se
+ * escriben — algo que un converter escondería.
+ */
+export async function createProduct(input: CreateProductInput): Promise<string> {
+  try {
+    const productRef = await addDoc(collection(db, "products"), {
+      name: input.name,
+      // nameLower lo deriva el service, no lo recibe: es un campo técnico que
+      // existe solo para que la búsqueda por prefijo funcione sin importar cómo
+      // el admin haya escrito las mayúsculas. Si viniera del formulario, bastaría
+      // un descuido para que un producto quedara invisible en las búsquedas.
+      nameLower: input.name.toLowerCase(),
+      categoryId: input.categoryId,
+      price: input.price,
+      imageUrl: input.imageUrl,
+    });
+
+    return productRef.id;
+  } catch (error) {
+    throw error instanceof Error ? error : new Error("Error desconocido al crear el producto");
   }
 }
