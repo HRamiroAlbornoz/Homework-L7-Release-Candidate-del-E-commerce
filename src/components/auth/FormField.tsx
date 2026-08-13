@@ -1,7 +1,10 @@
 interface FormFieldProps {
   id: string;
   label: string;
-  type: "email" | "password" | "text";
+  // "number" se sumó para el formulario de alta de productos. El valor sigue
+  // viajando como string (es lo que devuelve un <input> siempre, incluso los
+  // numéricos): convertirlo a número es responsabilidad de quien valida.
+  type: "email" | "password" | "text" | "number";
   value: string;
   onChange: (value: string) => void;
   // "| undefined" explícito (no solo "?"): con exactOptionalPropertyTypes,

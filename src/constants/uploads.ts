@@ -11,6 +11,16 @@
 // dirían cosas distintas y el usuario recibiría un rechazo del servidor por algo
 // que el formulario le había aceptado.
 
+// Endpoint de la Vercel Function que firma la subida.
+//
+// Vive acá y no en uploadsService.ts por un motivo concreto de testing: los
+// handlers de MSW necesitan esta ruta, y los carga el archivo de setup de la
+// suite. Si la importaran del service, el setup arrastraría el service entero
+// —y con él lib/firebase— ANTES de que los tests puedan mockearlo, y todos los
+// vi.mock sobre Firebase dejarían de tener efecto. El archivo de setup no debe
+// importar código de la aplicación.
+export const PRESIGN_ENDPOINT = "/api/uploads/presign";
+
 // Whitelist, nunca blacklist: se enumera lo permitido en vez de lo prohibido.
 // Una blacklist deja pasar todo lo que no se anticipó, y siempre hay algo que no
 // se anticipó.
