@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { SignupForm } from "./SignupForm";
@@ -164,7 +164,12 @@ describe("SignupForm", () => {
     expect(screen.getByLabelText("Confirmar contraseña")).toBeDisabled();
     expect(screen.getByRole("button", { name: "Creando cuenta..." })).toBeDisabled();
 
-    resolveSignup();
+    // Ver la explicación equivalente en LoginForm.test.tsx: resolver la promesa
+    // dispara un cambio de estado que hay que esperar dentro de act(), o React
+    // avisa que el componente se actualizó después de terminado el test.
+    await act(async () => {
+      resolveSignup();
+    });
   });
 
   it("si signup() falla (ej. email ya en uso), muestra el mensaje ya traducido y no redirige", async () => {
