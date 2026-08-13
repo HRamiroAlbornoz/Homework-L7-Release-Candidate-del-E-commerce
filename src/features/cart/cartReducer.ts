@@ -27,8 +27,13 @@ function roundToCents(amount: number): number {
  * regla que garantiza la consistencia que pide el enunciado: es imposible que
  * una acción actualice los ítems y se olvide de actualizar los totales, porque
  * ninguna acción arma el estado a mano.
+ *
+ * Se exporta porque cartStorage.ts también la necesita: al leer un carrito
+ * guardado en localStorage, los totales que vengan en el JSON no son confiables
+ * (pueden haber sido editados a mano), así que se recalculan desde los ítems con
+ * esta misma función. Un solo lugar calcula totales en toda la app.
  */
-function withRecalculatedTotals(items: CartItem[]): CartState {
+export function withRecalculatedTotals(items: CartItem[]): CartState {
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = items.reduce(
     (sum, item) => sum + item.unitPrice * item.quantity,
