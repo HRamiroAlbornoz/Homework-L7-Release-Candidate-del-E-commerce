@@ -13,26 +13,121 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Catálogo de productos: lectura pública (el e-commerce lo muestra sin
-    // requerir sesión), escritura bloqueada por completo. El CRUD de
-    // productos para administradores es trabajo futuro (Clase 7, fuera del
-    // alcance de este homework de autenticación) — cuando se implemente,
-    // esta regla de "write" debe reemplazarse por una que valide
-    // request.auth != null Y que el rol del usuario (leído desde
-    // /users/{uid}) sea "admin".
-    match /products/{productId} {
-      allow read: if true;
-      allow write: if false;
+    // -----------------------------------------------------------------------
+    // Funciones auxiliares
+    // -----------------------------------------------------------------------
+
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    // Perfiles de usuario: cada documento vive en users/{uid}, con el mismo
-    // uid que assigna Firebase Auth (ver createUserProfile en usersService.ts).
+    // Lee el rol del usuario desde su propio documento de perfil.
+    //
+    // IMPORTANTE (costo): cada get() dentro de una regla cuenta como UNA
+    // LECTURA FACTURABLE, y se ejecuta en cada evaluación de la regla. Por eso
+    // se llama solo en las reglas de escritura de productos, que son
+    // infrecuentes (las hace un admin de vez en cuando), y nunca en las de
+    // lectura del catálogo, que se evalúan en cada visita.
+    //
+    // Si el documento del usuario no existe, get() falla y la regla deniega la
+    // operación. Eso es lo correcto: una identidad sin perfil no tiene rol, y
+    // asumir uno por defecto sería justamente el agujero a evitar.
+    function callerRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && callerRole() == 'admin';
+    }
+
+    // -----------------------------------------------------------------------
+    // Catálogo de productos
+    // -----------------------------------------------------------------------
+
+    match /products/{productId} {
+      // Lectura pública: el catálogo se muestra sin requerir sesión.
+      allow read: if true;
+
+      // Alta desde el panel de administración. Se valida el ROL y también la
+      // FORMA del documento: sin la segunda parte, un admin (o alguien con su
+      // sesión) podría escribir un producto sin "nameLower" y dejarlo invisible
+      // en las búsquedas, o sin "name" y romper el render del catálogo para
+      // todos los visitantes.
+      allow create: if isAdmin() && isValidProduct(request.resource.data);
+
+      // Editar y eliminar productos no existen todavía en la aplicación. Las
+      // reglas reflejan lo que la app realmente hace, no lo que podría llegar a
+      // hacer: habilitar por las dudas es exactamente lo contrario al principio
+      // de mínimo privilegio.
+      allow update, delete: if false;
+    }
+
+    function isValidProduct(data) {
+      // hasOnly rechaza campos que no estén en la lista. Sin esto, alguien
+      // podría inyectar campos arbitrarios en el documento (por ejemplo un
+      // "featured: true" que la app no espera) o hacer crecer la base sin
+      // control.
+      return data.keys().hasOnly(['name', 'nameLower', 'categoryId', 'price', 'imageUrl'])
+             && data.name is string
+             && data.name.size() > 0
+             && data.name.size() <= 120
+             && data.nameLower is string
+             // nameLower TIENE que ser el nombre en minúsculas. Es un campo
+             // técnico que sostiene la búsqueda por prefijo: si se pudiera
+             // escribir cualquier cosa ahí, un producto quedaría inencontrable.
+             && data.nameLower == data.name.lower()
+             && data.categoryId in ['calzado', 'ropa', 'accesorios', 'electronica', 'hogar']
+             && data.price is number
+             && data.price > 0
+             && data.imageUrl is string
+             // Solo https: una URL http:// en el atributo src de una <img>
+             // dispara advertencias de contenido mixto y puede ser interceptada.
+             && data.imageUrl.matches('https://.*');
+    }
+
+    // -----------------------------------------------------------------------
+    // Órdenes de compra
+    // -----------------------------------------------------------------------
+
+    match /orders/{orderId} {
+      // Cada usuario ve solo sus propias órdenes. "resource" es el documento
+      // que YA está en la base (a diferencia de "request.resource", que es el
+      // que se intenta escribir).
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      allow create: if isSignedIn()
+                    // Nadie puede crear una orden a nombre de otro usuario.
+                    && request.resource.data.userId == request.auth.uid
+                    // El estado inicial siempre es 'created': así nadie puede
+                    // insertar directamente una orden ya marcada como pagada.
+                    && request.resource.data.status == 'created'
+                    // Patrón oficial de Firebase para confirmar que el campo se
+                    // escribió con serverTimestamp() real, y no con una fecha
+                    // armada a mano del lado del cliente.
+                    && request.resource.data.createdAt == request.time
+                    && request.resource.data.items is list
+                    && request.resource.data.items.size() > 0
+                    && request.resource.data.totalItems is int
+                    && request.resource.data.totalItems > 0
+                    && request.resource.data.totalPrice is number
+                    && request.resource.data.totalPrice >= 0;
+
+      // Una orden es un registro histórico: no se edita ni se borra. Un cambio
+      // de estado (a 'paid' o 'cancelled') lo haría un proceso del servidor con
+      // el SDK de Admin, que no pasa por estas reglas.
+      allow update, delete: if false;
+    }
+
+    // -----------------------------------------------------------------------
+    // Perfiles de usuario
+    // -----------------------------------------------------------------------
+
     match /users/{uid} {
-      // Un usuario solo puede leer su propio perfil. Ninguna pantalla actual
-      // de la app necesita leer el perfil de otro usuario (ni siquiera el
-      // panel de administración, que hoy es un placeholder). Si más adelante
-      // se agrega una vista de gestión de usuarios para admins, esta regla
-      // necesita ampliarse explícitamente para ese caso.
+      // Un usuario solo puede leer su propio perfil.
+      //
+      // Nota: la Vercel Function del presign también lee este documento para
+      // verificar el rol, pero lo hace con el SDK de Admin, que tiene acceso
+      // total y NO pasa por estas reglas. Por eso no hace falta ampliarlas.
       allow read: if request.auth != null && request.auth.uid == uid;
 
       // Alta del perfil: solo el propio usuario recién creado en Auth puede
@@ -47,11 +142,6 @@ service cloud.firestore {
       // la regla) y crear un perfil sin email/displayName/createdAt, que
       // después rompe la lectura (userDocSchema.parse falla) dejando la
       // cuenta inutilizable de forma permanente.
-      //
-      // "createdAt == request.time" es el patrón oficial de Firebase para
-      // confirmar que ese campo se escribió con serverTimestamp() real (el
-      // valor que la propia escritura resuelve en el servidor), no con una
-      // fecha arbitraria armada del lado del cliente.
       allow create: if request.auth != null
                     && request.auth.uid == uid
                     && request.resource.data.role == 'customer'

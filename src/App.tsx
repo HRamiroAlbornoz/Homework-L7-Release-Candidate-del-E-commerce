@@ -42,15 +42,21 @@ function App() {
         <Route path="login" element={<LoginPage />} />
         <Route path="signup" element={<SignupPage />} />
 
+        {/* El carrito es público: cualquiera puede armar su compra antes de
+            registrarse (el contenido vive en localStorage). La sesión recién se
+            exige al pagar, que es cuando hace falta saber a quién pertenece la
+            orden. Obligar a iniciar sesión para ver el carrito es una fricción
+            innecesaria que hace abandonar compras. */}
+        <Route
+          path="cart"
+          element={
+            <Suspense fallback={<LoadingState message="Cargando página..." />}>
+              <CartPage />
+            </Suspense>
+          }
+        />
+
         <Route element={<ProtectedRoute />}>
-          <Route
-            path="cart"
-            element={
-              <Suspense fallback={<LoadingState message="Cargando página..." />}>
-                <CartPage />
-              </Suspense>
-            }
-          />
           <Route
             path="checkout"
             element={

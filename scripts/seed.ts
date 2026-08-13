@@ -1,28 +1,84 @@
-import { initializeApp } from "firebase/app";
-import { getFirestore, writeBatch, collection, doc } from "firebase/firestore";
-import { envSchema } from "../src/lib/envSchema.js";
+import { cert, initializeApp } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
+import { z } from "zod";
 import { CATEGORIES, type CategoryId } from "../src/constants/categories.js";
 import type { ProductDoc } from "../src/types/product.js";
 
-// Este script corre con Node (vía tsx), no dentro de Vite: import.meta.env no
-// existe acá, así que cargamos el .env manualmente con la API nativa de Node
-// y validamos con el mismo envSchema que usa el navegador (sin duplicarlo),
-// pero leyendo de process.env en vez de import.meta.env.
-process.loadEnvFile(".env");
-const env = envSchema.parse(process.env);
+// Este script usa el SDK de ADMIN de Firebase, no el SDK cliente.
+//
+// Por qué: el SDK cliente se autentica como un usuario y por lo tanto queda
+// sujeto a las reglas de seguridad (firestore.rules), que solo permiten crear
+// productos a un administrador logueado. Un script de Node no tiene sesión de
+// usuario, así que con el SDK cliente la escritura se rechaza siempre.
+//
+// El SDK de Admin se autentica con una credencial de servicio y NO pasa por las
+// reglas: es la herramienta correcta para tareas administrativas fuera de la
+// aplicación. Esa potencia es también su riesgo — de ahí que la credencial viva
+// solo en .env (ignorado por git) y nunca en el código.
+//
+// Efecto secundario deseado: correr este script es la forma más rápida de
+// comprobar que FIREBASE_SERVICE_ACCOUNT_JSON está bien armado, ANTES de
+// cargarlo en Vercel, donde diagnosticar el mismo problema cuesta mucho más.
 
-// Conexión propia a Firestore (no reutiliza src/lib/firebase.ts): ese archivo
-// está pensado para el bundle de Vite (resolución "bundler"), mientras que
-// este script corre bajo Node con resolución "nodenext", que exige extensión
-// ".js" en todos los imports relativos de la cadena.
-const app = initializeApp({
-  apiKey: env.VITE_FIREBASE_API_KEY,
-  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: env.VITE_FIREBASE_APP_ID,
+// process.loadEnvFile es la API nativa de Node para leer un .env: no hace falta
+// dotenv. Este script corre con tsx, fuera de Vite, así que import.meta.env no
+// existe acá.
+process.loadEnvFile(".env");
+
+const seedEnvSchema = z.object({
+  FIREBASE_SERVICE_ACCOUNT_JSON: z
+    .string()
+    .min(1, "Falta FIREBASE_SERVICE_ACCOUNT_JSON en .env (Firebase Console → Configuración → Cuentas de servicio)"),
 });
+
+// Solo los tres campos que se usan, igual que en la Vercel Function. Validarlos
+// convierte un fallo críptico de OpenSSL en un mensaje que dice qué falta.
+const serviceAccountSchema = z.object({
+  project_id: z.string().min(1),
+  client_email: z.string().min(1),
+  private_key: z.string().min(1),
+});
+
+const env = seedEnvSchema.parse(process.env);
+
+/**
+ * Parsea el JSON del service account con un mensaje útil si falla.
+ *
+ * El error nativo de JSON.parse ("Expected property name or '}' at position 1")
+ * describe el síntoma pero no la causa, que casi siempre es la misma: el JSON
+ * quedó pegado en varias líneas dentro del .env. El parser de .env de Node lee
+ * un par clave=valor POR LÍNEA, así que en ese caso el valor termina siendo
+ * apenas "{".
+ */
+function parseServiceAccount(rawJson: string): unknown {
+  try {
+    return JSON.parse(rawJson);
+  } catch {
+    throw new Error(
+      "FIREBASE_SERVICE_ACCOUNT_JSON no contiene un JSON válido.\n" +
+        "Causa más frecuente: el JSON está pegado en varias líneas dentro del .env.\n" +
+        "Un archivo .env admite un valor por línea: el JSON tiene que ir COMPLETO en una sola.\n" +
+        "Para convertirlo:\n" +
+        `  node -e "const fs=require('fs');console.log(JSON.stringify(JSON.parse(fs.readFileSync(process.argv[1],'utf8'))))" ruta/al/service-account.json`,
+    );
+  }
+}
+
+const serviceAccount = serviceAccountSchema.parse(
+  parseServiceAccount(env.FIREBASE_SERVICE_ACCOUNT_JSON),
+);
+
+const app = initializeApp({
+  credential: cert({
+    projectId: serviceAccount.project_id,
+    clientEmail: serviceAccount.client_email,
+    // Mismo tratamiento que en api/uploads/presign.ts: según cómo se haya
+    // guardado el JSON, los saltos de línea de la clave pueden quedar como los
+    // dos caracteres literales \ y n en vez de saltos reales.
+    privateKey: serviceAccount.private_key.replace(/\\n/g, "\n"),
+  }),
+});
+
 const db = getFirestore(app);
 
 // Nombres de producto por categoría. Se repiten a propósito varias marcas
@@ -166,19 +222,42 @@ function buildSeedProducts(): SeedProduct[] {
 }
 
 async function seed(): Promise<void> {
+  const productsRef = db.collection("products");
+
+  // Guarda contra el error más fácil de cometer con un script así: correrlo dos
+  // veces y terminar con el catálogo duplicado. Este script solo AGREGA
+  // documentos (cada uno con un id nuevo), nunca actualiza los existentes, así
+  // que una segunda corrida no "vuelve a dejar todo como estaba": deja el doble.
+  //
+  // limit(1) alcanza para saber si hay algo: traer la colección entera solo para
+  // preguntar "¿está vacía?" costaría una lectura por documento.
+  const existing = await productsRef.limit(1).get();
+  const forceRequested = process.argv.includes("--force");
+
+  if (!existing.empty && !forceRequested) {
+    console.log(
+      "La colección 'products' ya tiene documentos. No se insertó nada.\n" +
+        "Si querés agregar el seed igual (se sumará a lo existente), corré: npm run seed -- --force",
+    );
+    return;
+  }
+
   const products = buildSeedProducts();
-  const productsRef = collection(db, "products");
-  const batch = writeBatch(db);
+
+  // Un batch de Firestore admite hasta 500 operaciones. Este seed genera ~80, así
+  // que entra holgado en uno solo; si el catálogo creciera, habría que partirlo.
+  const batch = db.batch();
 
   for (const product of products) {
-    const docRef = doc(productsRef);
+    // doc() sin argumento genera un id automático, igual que addDoc en el SDK
+    // cliente.
     const data: ProductDoc = {
       name: product.name,
       nameLower: product.name.toLowerCase(),
       categoryId: product.categoryId,
       price: product.price,
     };
-    batch.set(docRef, data);
+    batch.set(productsRef.doc(), data);
   }
 
   try {

@@ -671,3 +671,384 @@ h1 {
   color: var(--accent);
   font-weight: 600;
 }
+
+/* ---------------------------------------------------------------------------
+   Carrito
+   --------------------------------------------------------------------------- */
+
+/* Botón "Agregar al carrito" de cada tarjeta del catálogo. min-height de 44px
+   para cumplir el área táctil mínima en mobile: un botón más chico es difícil
+   de acertar con el dedo. */
+.add-to-cart {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 12px;
+  padding: 8px 16px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.05s ease;
+}
+
+.add-to-cart:hover {
+  opacity: 0.85;
+}
+
+.add-to-cart:active {
+  transform: scale(0.98);
+}
+
+/* Mensaje para productos sin precio cargado. Ocupa el mismo alto que el botón
+   para que las tarjetas de una misma fila no queden desalineadas. */
+.add-to-cart__unavailable {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin: 12px 0 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-style: italic;
+}
+
+/* Contador del carrito en el header. */
+.cart-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 8px;
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.cart-badge:hover {
+  color: var(--accent);
+}
+
+/* El número se muestra en una píldora con el color de acento. El contraste
+   accent/accent-contrast ya está validado en el resto de la app. */
+.cart-badge__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .add-to-cart {
+    transition: none;
+  }
+
+  .add-to-cart:active {
+    transform: none;
+  }
+}
+
+/* Página del carrito */
+.cart-page__items {
+  list-style: none;
+  margin: 24px 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.cart-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.cart-item__info {
+  flex: 1 1 180px;
+}
+
+.cart-item__name {
+  margin: 0;
+  font-size: 16px;
+  color: var(--text-h);
+}
+
+.cart-item__unit-price {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.cart-item__subtotal {
+  margin: 0;
+  min-width: 96px;
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.cart-item__remove {
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.cart-item__remove:hover {
+  color: var(--error-text);
+  border-color: var(--error-border);
+}
+
+/* Selector de cantidad */
+.quantity-selector {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.quantity-selector__button {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-raised);
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.quantity-selector__button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.quantity-selector__button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.quantity-selector__value {
+  min-width: 32px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Resumen y acciones */
+.cart-page__summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.cart-page__total {
+  margin: 0;
+  font-size: 18px;
+}
+
+.cart-page__checkout-link,
+.cart-page__confirm-yes {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 24px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.cart-page__back-link {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.cart-page__clear,
+.cart-page__confirm-no {
+  min-height: 44px;
+  margin-top: 16px;
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.cart-page__confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 16px;
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
+  border-radius: 8px;
+  color: var(--error-text);
+}
+
+.cart-page__confirm p {
+  flex: 1 1 100%;
+  margin: 0;
+}
+
+/* Checkout */
+.checkout__items {
+  list-style: none;
+  margin: 24px 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.checkout__item {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.checkout__total {
+  margin: 0 0 16px;
+  font-size: 18px;
+}
+
+.checkout__submit {
+  min-height: 44px;
+  padding: 8px 24px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.checkout__submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.checkout__error {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  background: var(--error-bg);
+  color: var(--error-text);
+  border: 1px solid var(--error-border);
+  border-radius: 6px;
+}
+
+.checkout__confirmation {
+  padding: 16px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.checkout__back-link {
+  display: inline-block;
+  margin-top: 16px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Formulario de alta de productos (panel de administración) */
+.create-product-form {
+  max-width: 480px;
+  margin-top: 24px;
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.create-product-form h2 {
+  margin-top: 0;
+}
+
+.create-product-form__submit {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 8px;
+  padding: 8px 24px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.create-product-form__submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.create-product-form__error {
+  margin: 16px 0 0;
+  padding: 12px 16px;
+  background: var(--error-bg);
+  color: var(--error-text);
+  border: 1px solid var(--error-border);
+  border-radius: 6px;
+}
+
+.create-product-form__success {
+  margin-top: 16px;
+  padding: 16px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.create-product-form__preview {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+
+/* Imagen del producto en la tarjeta del catálogo. aspect-ratio + object-fit
+   mantienen todas las tarjetas de la misma altura sin deformar la imagen: sin
+   esto, una foto vertical y una apaisada romperían la alineación de la grilla. */
+.product-card__image {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  background: var(--surface-raised);
+}

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { LoginForm } from "./LoginForm";
@@ -123,7 +123,14 @@ describe("LoginForm", () => {
     expect(screen.getByLabelText("Contraseña")).toBeDisabled();
     expect(screen.getByRole("button", { name: "Iniciando sesión..." })).toBeDisabled();
 
-    resolveLogin();
+    // Resolver la promesa desbloquea el envío y hace que el componente vuelva a
+    // isSubmitting: false. Ese cambio de estado tiene que ocurrir DENTRO de
+    // act(), y hay que esperarlo: si el test termina antes, React reclama
+    // ("not wrapped in act") porque el componente se actualizó cuando el test
+    // ya se había dado por finalizado.
+    await act(async () => {
+      resolveLogin();
+    });
   });
 
   it("si login() falla, muestra el mensaje de error ya traducido y no redirige", async () => {

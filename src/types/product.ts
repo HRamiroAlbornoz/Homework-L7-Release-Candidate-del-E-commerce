@@ -8,6 +8,15 @@ export const productSchema = z.object({
   nameLower: z.string().min(1),
   categoryId: z.string().min(1),
   price: z.number().nonnegative().optional(),
+  // URL pública de la imagen, tal como queda después de subirla al bucket.
+  // Es opcional porque los productos cargados por el seed no tienen imagen: si
+  // fuera obligatoria, todo el catálogo existente dejaría de validar y la app
+  // se rompería al leerlo.
+  //
+  // z.url() (y no z.string() a secas) porque este valor termina en el atributo
+  // "src" de una etiqueta <img>: validar que sea una URL bien formada evita
+  // meter en el DOM un string arbitrario venido de la base de datos.
+  imageUrl: z.url().optional(),
 });
 
 export type Product = z.infer<typeof productSchema>;
