@@ -1,24 +1,16 @@
 import { randomUUID } from "node:crypto";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { cert, getApps, initializeApp, type App } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
+import { createRemoteJWKSet, jwtVerify } from "jose";
 import { z } from "zod";
 import {
   ALLOWED_IMAGE_TYPES,
   IMAGE_EXTENSION_BY_TYPE,
   MAX_IMAGE_SIZE_BYTES,
-// La extensión ".js" (y no ".ts", ni sin extensión) es obligatoria acá.
-//
-// El package.json declara "type": "module", así que esta función corre como ESM
-// en Node, y el resolvedor de ESM NO completa extensiones: pide la ruta exacta.
-// Se escribe ".js" y no ".ts" porque es el nombre que va a tener el archivo YA
-// COMPILADO, que es lo que existe en el servidor en tiempo de ejecución.
-//
-// Vite sí completa extensiones al empaquetar el frontend, y por eso este error
-// no aparece en desarrollo: se manifiesta recién al ejecutar la función
-// desplegada.
+  // La extensión ".js" es obligatoria: el package.json declara "type": "module",
+  // así que esta función corre como ESM en Node, y el resolvedor de ESM no
+  // completa extensiones. Se escribe ".js" (no ".ts") porque ese es el nombre
+  // del archivo YA COMPILADO, que es lo que existe en tiempo de ejecución.
 } from "../../src/constants/uploads.js";
 
 // ============================================================================
@@ -35,8 +27,24 @@ import {
 //
 // Este archivo vive en api/ y NO en src/. Esa separación es física, no
 // decorativa: todo lo que está en src/ termina dentro del bundle que descarga el
-// navegador, donde cualquiera puede leerlo. api/ solo corre en el servidor de
-// Vercel.
+// navegador, donde cualquiera puede leerlo. api/ solo corre en el servidor.
+//
+// POR QUÉ NO SE USA firebase-admin ACÁ
+// ------------------------------------
+// La opción evidente para verificar el token sería el SDK de Admin de Firebase.
+// No se puede: firebase-admin depende de jwks-rsa, que es CommonJS y hace
+// require("jose"); jose 6 es solo ESM, y el runtime de las Vercel Functions no
+// admite require() de un módulo ESM. El resultado es que la función ni siquiera
+// arranca (ERR_REQUIRE_ESM).
+//
+// Verificar el token con jose directamente elimina ese conflicto (jose es ESM,
+// igual que esta función) y además mejora el diseño: para leer el rol se usa la
+// API REST de Firestore con el token DEL PROPIO USUARIO, así que quien autoriza
+// la lectura son las reglas de seguridad, no un SDK con acceso total. Menos
+// privilegio en el camino de la request, y un secreto menos que administrar.
+//
+// scripts/seed.ts sí sigue usando firebase-admin: corre en tu máquina con Node,
+// donde require() de ESM funciona, y ahí sí hace falta saltear las reglas.
 // ============================================================================
 
 // Cuánto vive la URL firmada. Corta a propósito: es el tiempo que alguien tiene
@@ -52,72 +60,116 @@ const UPLOAD_KEY_PREFIX = "products";
 // Configuración del servidor
 // ---------------------------------------------------------------------------
 
-// NINGUNA de estas variables lleva el prefijo VITE_, y eso no es un detalle de
-// estilo: Vite reemplaza literalmente por su valor todo lo que empiece con VITE_
-// al construir el bundle. Una clave de AWS con ese prefijo quedaría escrita en
-// texto plano dentro de un archivo .js público. Sin el prefijo, Vite ni las mira,
-// y solo existen acá, en process.env del servidor.
-const serverEnvSchema = z.object({
+// Van en DOS schemas separados a propósito, no en uno solo.
+//
+// La identidad se verifica antes que nada, y para eso solo hace falta el id del
+// proyecto. Si todo estuviera junto, una request sin token en un entorno al que
+// todavía le faltan las claves de S3 respondería 500 ("algo explotó") en vez de
+// 401 ("te falta el token"): un error engañoso que apunta al lugar equivocado.
+const firebaseEnvSchema = z.object({
+  // Se lee la variable con prefijo VITE_ a propósito, en vez de duplicar el
+  // valor en otra. El prefijo significa "este valor es público", no "este valor
+  // es solo del cliente": el id del proyecto ya viaja en el bundle del
+  // navegador, así que no hay nada que proteger. Duplicarlo en dos variables
+  // solo abriría la puerta a que un día no coincidan.
+  VITE_FIREBASE_PROJECT_ID: z.string().min(1),
+});
+
+// NINGUNA de estas lleva el prefijo VITE_, y eso no es un detalle de estilo:
+// Vite reemplaza literalmente por su valor todo lo que empiece con VITE_ al
+// construir el bundle. Una clave de AWS con ese prefijo quedaría escrita en
+// texto plano dentro de un archivo .js público.
+const s3EnvSchema = z.object({
   S3_REGION: z.string().min(1),
   S3_BUCKET: z.string().min(1),
   S3_ACCESS_KEY_ID: z.string().min(1),
   S3_SECRET_ACCESS_KEY: z.string().min(1),
-  FIREBASE_SERVICE_ACCOUNT_JSON: z.string().min(1),
 });
 
-// Solo los tres campos del service account que realmente se usan. Validarlos
-// evita el error más críptico de este flujo: si el JSON está mal pegado en el
-// dashboard, firebase-admin falla mucho más adelante con un mensaje que no
-// menciona la variable de entorno.
-const serviceAccountSchema = z.object({
-  project_id: z.string().min(1),
-  client_email: z.string().min(1),
-  private_key: z.string().min(1),
-});
+// ---------------------------------------------------------------------------
+// Verificación del token de Firebase
+// ---------------------------------------------------------------------------
 
-type ServerEnv = z.infer<typeof serverEnvSchema>;
+// Claves públicas con las que Google firma los ID tokens de Firebase Auth.
+//
+// createRemoteJWKSet las descarga la primera vez y las mantiene en memoria,
+// respetando el cache de la respuesta. Como Vercel reutiliza la misma instancia
+// de la función entre requests, el costo se paga una sola vez y no en cada
+// invocación. Por eso se crea a nivel de módulo y no dentro del handler.
+const firebaseJwks = createRemoteJWKSet(
+  new URL("https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com"),
+);
 
-let cachedEnv: ServerEnv | null = null;
+/**
+ * Verifica un ID token de Firebase y devuelve el uid del usuario.
+ *
+ * jwtVerify comprueba tres cosas, y las tres importan:
+ * - La FIRMA contra las claves públicas de Google (nadie puede fabricar uno).
+ * - La EXPIRACIÓN (un token robado deja de servir en una hora).
+ * - El EMISOR y la AUDIENCIA: que el token sea de ESTE proyecto de Firebase y
+ *   no de otro cualquiera. Sin este chequeo, un token válido emitido para un
+ *   proyecto distinto pasaría como bueno.
+ *
+ * @throws si el token no es válido. Quien llama lo traduce a un 401.
+ */
+async function verifyFirebaseIdToken(idToken: string, projectId: string): Promise<string> {
+  const { payload } = await jwtVerify(idToken, firebaseJwks, {
+    issuer: `https://securetoken.google.com/${projectId}`,
+    audience: projectId,
+  });
 
-function getServerEnv(): ServerEnv {
-  // Se cachea porque Vercel reutiliza la misma instancia de la función entre
-  // requests: validar en cada llamada sería trabajo repetido sin sentido.
-  if (cachedEnv === null) {
-    cachedEnv = serverEnvSchema.parse(process.env);
+  // "sub" (subject) es el uid del usuario en los ID tokens de Firebase.
+  if (typeof payload.sub !== "string" || payload.sub.length === 0) {
+    throw new Error("El token no contiene un uid válido");
   }
-  return cachedEnv;
+
+  return payload.sub;
 }
 
-// ---------------------------------------------------------------------------
-// Firebase Admin
-// ---------------------------------------------------------------------------
+// Forma de la respuesta de la API REST de Firestore. Los documentos vienen con
+// los tipos explícitos ({ stringValue: "admin" } en vez de "admin"), porque el
+// formato es el mismo que usa gRPC internamente.
+const firestoreUserDocSchema = z.object({
+  fields: z.object({
+    role: z.object({ stringValue: z.string() }),
+  }),
+});
 
-function getAdminApp(): App {
-  // getApps() devuelve las apps ya inicializadas. Sin este chequeo, la segunda
-  // request sobre una instancia reutilizada intentaría inicializar de nuevo y
-  // fallaría con "The default Firebase app already exists".
-  const [existingApp] = getApps();
-  if (existingApp) {
-    return existingApp;
+/**
+ * Lee el rol del usuario desde Firestore usando SU PROPIO token.
+ *
+ * Detalle importante de seguridad: la request va autenticada como el usuario, no
+ * con credenciales de administrador. Eso significa que las reglas de
+ * firestore.rules son las que deciden si la lectura se permite — la regla
+ * "allow read: if request.auth.uid == uid" es la que la habilita. Si algún día
+ * esa regla cambia, este código deja de poder leer, que es exactamente el
+ * comportamiento correcto.
+ *
+ * @returns el rol, o null si el documento no existe o no se pudo leer.
+ */
+async function readUserRole(uid: string, idToken: string, projectId: string): Promise<string | null> {
+  // encodeURIComponent sobre el uid: nunca se concatena un valor de origen
+  // externo en una URL sin codificarlo, aunque en este caso venga de un token ya
+  // verificado.
+  const documentUrl =
+    `https://firestore.googleapis.com/v1/projects/${projectId}` +
+    `/databases/(default)/documents/users/${encodeURIComponent(uid)}`;
+
+  const response = await fetch(documentUrl, {
+    headers: { Authorization: `Bearer ${idToken}` },
+  });
+
+  // 404 (no existe el perfil) o 403 (las reglas lo rechazan) llegan acá. En los
+  // dos casos la respuesta es la misma: no se pudo determinar un rol, así que no
+  // se asume ninguno.
+  if (!response.ok) {
+    return null;
   }
 
-  const env = getServerEnv();
-  const serviceAccount = serviceAccountSchema.parse(
-    JSON.parse(env.FIREBASE_SERVICE_ACCOUNT_JSON),
-  );
+  const body: unknown = await response.json();
+  const parsed = firestoreUserDocSchema.safeParse(body);
 
-  return initializeApp({
-    credential: cert({
-      projectId: serviceAccount.project_id,
-      clientEmail: serviceAccount.client_email,
-      // La clave privada es un texto multilínea. Según cómo se haya pegado en el
-      // dashboard de Vercel, los saltos de línea pueden quedar como la secuencia
-      // literal de dos caracteres \ y n en vez de saltos reales, y entonces la
-      // firma falla con un error de OpenSSL que no dice nada útil. Este replace
-      // cubre ese caso y es inofensivo cuando los saltos ya son reales.
-      privateKey: serviceAccount.private_key.replace(/\\n/g, "\n"),
-    }),
-  });
+  return parsed.success ? parsed.data.fields.role.stringValue : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -142,11 +194,7 @@ function errorResponse(status: number, code: string, message: string): Response 
 // falta recibir, y todo lo que se recibe hay que validarlo.
 const presignRequestSchema = z.object({
   contentType: z.enum(ALLOWED_IMAGE_TYPES),
-  size: z
-    .number()
-    .int()
-    .positive()
-    .max(MAX_IMAGE_SIZE_BYTES),
+  size: z.number().int().positive().max(MAX_IMAGE_SIZE_BYTES),
 });
 
 // ---------------------------------------------------------------------------
@@ -158,6 +206,8 @@ const presignRequestSchema = z.object({
 // resto por su cuenta: no hace falta chequear el método a mano.
 export async function POST(request: Request): Promise<Response> {
   try {
+    const { VITE_FIREBASE_PROJECT_ID: projectId } = firebaseEnvSchema.parse(process.env);
+
     // --- 1. Identidad: ¿quién sos? -----------------------------------------
     const authorizationHeader = request.headers.get("authorization");
     if (authorizationHeader === null || !authorizationHeader.startsWith("Bearer ")) {
@@ -166,13 +216,9 @@ export async function POST(request: Request): Promise<Response> {
 
     const idToken = authorizationHeader.slice("Bearer ".length);
 
-    const adminApp = getAdminApp();
     let uid: string;
     try {
-      // verifyIdToken chequea la firma del token contra las claves públicas de
-      // Google y su expiración. Un token inventado o vencido no pasa de acá.
-      const decodedToken = await getAuth(adminApp).verifyIdToken(idToken);
-      uid = decodedToken.uid;
+      uid = await verifyFirebaseIdToken(idToken, projectId);
     } catch {
       return errorResponse(401, "INVALID_TOKEN", "Tu sesión no es válida. Iniciá sesión de nuevo.");
     }
@@ -186,8 +232,8 @@ export async function POST(request: Request): Promise<Response> {
     // El rol se lee de Firestore y no del token: los roles son una decisión de
     // negocio de esta app, viven en su base de datos, y así se puede cambiar el
     // rol de alguien sin tocar el sistema de autenticación.
-    const userSnapshot = await getFirestore(adminApp).collection("users").doc(uid).get();
-    if (userSnapshot.data()?.role !== "admin") {
+    const role = await readUserRole(uid, idToken, projectId);
+    if (role !== "admin") {
       return errorResponse(403, "FORBIDDEN", "No tenés permisos para subir imágenes.");
     }
 
@@ -205,7 +251,7 @@ export async function POST(request: Request): Promise<Response> {
     const { contentType, size } = parsedBody.data;
 
     // --- 4. Firma ----------------------------------------------------------
-    const env = getServerEnv();
+    const s3Env = s3EnvSchema.parse(process.env);
 
     // El nombre del archivo se genera acá con un UUID, y la extensión sale del
     // contentType que ya validamos contra la whitelist. Nunca del nombre que
@@ -215,17 +261,17 @@ export async function POST(request: Request): Promise<Response> {
     const objectKey = `${UPLOAD_KEY_PREFIX}/${randomUUID()}.${IMAGE_EXTENSION_BY_TYPE[contentType]}`;
 
     const s3Client = new S3Client({
-      region: env.S3_REGION,
+      region: s3Env.S3_REGION,
       credentials: {
-        accessKeyId: env.S3_ACCESS_KEY_ID,
-        secretAccessKey: env.S3_SECRET_ACCESS_KEY,
+        accessKeyId: s3Env.S3_ACCESS_KEY_ID,
+        secretAccessKey: s3Env.S3_SECRET_ACCESS_KEY,
       },
     });
 
     const uploadUrl = await getSignedUrl(
       s3Client,
       new PutObjectCommand({
-        Bucket: env.S3_BUCKET,
+        Bucket: s3Env.S3_BUCKET,
         Key: objectKey,
         ContentType: contentType,
         ContentLength: size,
@@ -242,7 +288,7 @@ export async function POST(request: Request): Promise<Response> {
 
     return Response.json({
       uploadUrl,
-      publicUrl: `https://${env.S3_BUCKET}.s3.${env.S3_REGION}.amazonaws.com/${objectKey}`,
+      publicUrl: `https://${s3Env.S3_BUCKET}.s3.${s3Env.S3_REGION}.amazonaws.com/${objectKey}`,
       key: objectKey,
     });
   } catch (error) {
