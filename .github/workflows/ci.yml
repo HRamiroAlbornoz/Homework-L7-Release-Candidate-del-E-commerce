@@ -25,10 +25,13 @@ jobs:
 
     steps:
       - name: Descargar el código
-        uses: actions/checkout@v4
+        # v5 y no v4: las acciones en v4 corren sobre Node 20, que GitHub está
+        # retirando de sus runners. Mientras tanto las fuerza a correr en Node 24
+        # y avisa en cada ejecución; actualizar evita que un día dejen de andar.
+        uses: actions/checkout@v5
 
       - name: Preparar Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           # Misma versión mayor que se usa en desarrollo. Fijarla evita el
           # clásico "en mi máquina anda": si acá corriera otra versión, un error
