@@ -1,0 +1,80 @@
+rules_version = '2';
+
+// Reglas de seguridad de Firestore para este proyecto. Archivo de referencia
+// versionado junto al código (no se despliega automáticamente con `npm run
+// dev`/`npm run build`, requiere `firebase deploy --only firestore:rules`
+// con el CLI de Firebase inicializado).
+//
+// Por qué existe este archivo: la UI (Header, AdminRoute) oculta o bloquea
+// la navegación según el rol del usuario, pero eso es solo una mejora de UX.
+// Nada impide que alguien llame directamente al SDK de Firestore desde la
+// consola del navegador. La única protección real contra que un usuario lea
+// o escriba datos que no le corresponden es esta capa de reglas.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Catálogo de productos: lectura pública (el e-commerce lo muestra sin
+    // requerir sesión), escritura bloqueada por completo. El CRUD de
+    // productos para administradores es trabajo futuro (Clase 7, fuera del
+    // alcance de este homework de autenticación) — cuando se implemente,
+    // esta regla de "write" debe reemplazarse por una que valide
+    // request.auth != null Y que el rol del usuario (leído desde
+    // /users/{uid}) sea "admin".
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Perfiles de usuario: cada documento vive en users/{uid}, con el mismo
+    // uid que assigna Firebase Auth (ver createUserProfile en usersService.ts).
+    match /users/{uid} {
+      // Un usuario solo puede leer su propio perfil. Ninguna pantalla actual
+      // de la app necesita leer el perfil de otro usuario (ni siquiera el
+      // panel de administración, que hoy es un placeholder). Si más adelante
+      // se agrega una vista de gestión de usuarios para admins, esta regla
+      // necesita ampliarse explícitamente para ese caso.
+      allow read: if request.auth != null && request.auth.uid == uid;
+
+      // Alta del perfil: solo el propio usuario recién creado en Auth puede
+      // crear su documento (nunca en nombre de otro uid), y el rol queda
+      // forzado a "customer" a nivel de reglas — coincide con
+      // createUserProfile(), que nunca acepta el rol como parámetro externo,
+      // pero esta regla es la que de verdad lo garantiza aunque alguien
+      // intente escribir directo con el SDK, sin pasar por la app.
+      //
+      // Además de "role", se valida la forma completa del documento: sin
+      // esto, alguien podría escribir { role: "customer" } a secas (pasando
+      // la regla) y crear un perfil sin email/displayName/createdAt, que
+      // después rompe la lectura (userDocSchema.parse falla) dejando la
+      // cuenta inutilizable de forma permanente.
+      //
+      // "createdAt == request.time" es el patrón oficial de Firebase para
+      // confirmar que ese campo se escribió con serverTimestamp() real (el
+      // valor que la propia escritura resuelve en el servidor), no con una
+      // fecha arbitraria armada del lado del cliente.
+      allow create: if request.auth != null
+                    && request.auth.uid == uid
+                    && request.resource.data.role == 'customer'
+                    && request.resource.data.email is string
+                    && request.resource.data.email.size() > 0
+                    && request.resource.data.displayName is string
+                    && request.resource.data.createdAt == request.time;
+
+      // Actualización: el dueño del documento puede modificar su propio
+      // perfil, pero el campo "role" tiene que quedar exactamente igual al
+      // valor que ya tenía. Así, aunque alguien intente hacer
+      // updateDoc(doc(db, "users", miUid), { role: "admin" }) directamente
+      // desde la consola del navegador, Firestore rechaza la escritura.
+      // Un ascenso real a "admin" solo puede hacerse manualmente desde la
+      // Firebase Console (como indica el enunciado del homework), nunca
+      // desde el cliente.
+      allow update: if request.auth != null
+                    && request.auth.uid == uid
+                    && request.resource.data.role == resource.data.role;
+
+      // Sin baja de perfiles: no hay ningún flujo de "eliminar cuenta" en
+      // la app todavía.
+      allow delete: if false;
+    }
+  }
+}

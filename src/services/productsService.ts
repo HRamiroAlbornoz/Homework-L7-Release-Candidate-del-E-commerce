@@ -1,0 +1,87 @@
+import {
+  collection,
+  query,
+  where,
+  orderBy,
+  startAt,
+  endAt,
+  startAfter,
+  limit,
+  getDocs,
+  type QueryConstraint,
+  type QueryDocumentSnapshot,
+  type DocumentData,
+  type FirestoreDataConverter,
+} from "firebase/firestore";
+import { db } from "../lib/firebase";
+import { MIN_SEARCH_CHARS } from "../constants/search";
+import { productDocSchema, type Product, type ProductDoc, type ProductQueryParams } from "../types/product";
+
+// Traduce entre el documento crudo de Firestore (ProductDoc, sin id) y el
+// modelo que usa la app (Product, con id). fromFirestore valida con Zod antes
+// de confiar en la forma del documento: si Firestore devolviera un doc corrupto
+// o incompleto, acá se corta con un error claro en vez de propagar datos inválidos.
+const productConverter: FirestoreDataConverter<Product, ProductDoc> = {
+  toFirestore: (): never => {
+    // Este catálogo es de solo lectura: nunca se escriben productos desde el
+    // frontend. FirestoreDataConverter exige implementar toFirestore igual,
+    // así que si alguna vez se llamara por error, preferimos fallar fuerte
+    // y explícito en vez de mapear campos que no vamos a usar.
+    throw new Error("toFirestore no está implementado: este catálogo es de solo lectura.");
+  },
+  fromFirestore: (snapshot, options) => {
+    const raw = snapshot.data(options);
+    const parsed = productDocSchema.parse(raw);
+    return { id: snapshot.id, ...parsed };
+  },
+};
+
+export interface ListProductsResult {
+  items: Product[];
+  lastDoc: QueryDocumentSnapshot<DocumentData> | null;
+}
+
+export async function listProducts(params: ProductQueryParams): Promise<ListProductsResult> {
+  try {
+    const productsRef = collection(db, "products").withConverter(productConverter);
+    const constraints: QueryConstraint[] = [];
+
+    if (params.categoryId) {
+      constraints.push(where("categoryId", "==", params.categoryId));
+    }
+
+    if (params.searchPrefix && params.searchPrefix.length >= MIN_SEARCH_CHARS) {
+      const prefix = params.searchPrefix.toLowerCase();
+      // Rango de prefijo: todo lo que empiece con "prefix" queda entre
+      // startAt(prefix) y endAt(prefix + ''), el carácter Unicode más alto,
+      // que actúa como "fin de rango" en el patrón oficial de Firestore.
+      constraints.push(orderBy("nameLower"));
+      constraints.push(startAt(prefix));
+      constraints.push(endAt(prefix + ""));
+    } else {
+      // Sin búsqueda: igual ordenamos por nameLower para que la paginación
+      // sea estable (el mismo orderBy en la primera página y en "cargar más").
+      constraints.push(orderBy("nameLower"));
+    }
+
+    constraints.push(limit(params.pageSize));
+
+    if (params.cursor) {
+      // startAfter (no startAt) para "cargar más": evita repetir el último
+      // producto de la página anterior.
+      constraints.push(startAfter(params.cursor));
+    }
+
+    const q = query(productsRef, ...constraints);
+    const snapshot = await getDocs(q);
+
+    const items = snapshot.docs.map((doc) => doc.data());
+    const lastDoc = snapshot.docs.at(-1) ?? null;
+
+    return { items, lastDoc };
+  } catch (error) {
+    // Nunca un catch vacío: relanzamos un Error legible para que el
+    // ProductsContext lo capture y muestre el ErrorState con retry.
+    throw error instanceof Error ? error : new Error("Error desconocido al consultar productos");
+  }
+}
