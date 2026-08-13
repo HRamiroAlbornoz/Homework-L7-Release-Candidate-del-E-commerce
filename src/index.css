@@ -1040,3 +1040,15 @@ h1 {
   height: auto;
   border-radius: 6px;
 }
+
+/* Imagen del producto en la tarjeta del catálogo. aspect-ratio + object-fit
+   mantienen todas las tarjetas de la misma altura sin deformar la imagen: sin
+   esto, una foto vertical y una apaisada romperían la alineación de la grilla. */
+.product-card__image {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  background: var(--surface-raised);
+}
