@@ -39,7 +39,14 @@ export function CartPage() {
         "lista de 3 elementos" y permite saltar de uno a otro. Con divs, esa
         estructura no existe.
       */}
-      <ul className="cart-page__items">
+      {/*
+        role="list" es redundante en teoría (un <ul> ya es una lista), pero
+        necesario en la práctica: cuando una lista lleva "list-style: none" en el
+        CSS —como esta—, VoiceOver en Safari le quita las semánticas de lista y
+        deja de anunciar "lista de 2 elementos". Declararlo explícitamente
+        restituye ese comportamiento sin afectar a los demás navegadores.
+      */}
+      <ul className="cart-page__items" role="list">
         {items.map((item) => (
           <CartItemRow key={item.productId} item={item} />
         ))}
