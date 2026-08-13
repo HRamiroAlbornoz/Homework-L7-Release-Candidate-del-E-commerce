@@ -1,14 +1,11 @@
 import { getCategoryLabel } from "../constants/categories";
+import { AddToCartButton } from "../features/cart/components/AddToCartButton";
+import { formatPrice } from "../lib/formatPrice";
 import type { Product } from "../types/product";
 
 interface ProductCardProps {
   product: Product;
 }
-
-const priceFormatter = new Intl.NumberFormat("es-AR", {
-  style: "currency",
-  currency: "ARS",
-});
 
 export function ProductCard({ product }: ProductCardProps) {
   const categoryLabel = getCategoryLabel(product.categoryId);
@@ -18,8 +15,9 @@ export function ProductCard({ product }: ProductCardProps) {
       <h3 className="product-card__name">{product.name}</h3>
       <p className="product-card__category">{categoryLabel}</p>
       {product.price !== undefined && (
-        <p className="product-card__price">{priceFormatter.format(product.price)}</p>
+        <p className="product-card__price">{formatPrice(product.price)}</p>
       )}
+      <AddToCartButton product={product} />
     </article>
   );
 }
