@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
+import { CartBadge } from "../features/cart/components/CartBadge";
 
 // Toda la información de sesión sale de useAuth(): este componente no recibe
 // (ni debe recibir) props relacionadas con autenticación. Ocultar el link de
@@ -33,6 +34,11 @@ export function Header() {
         </Link>
 
         <div className="site-header__links">
+          {/* El carrito se muestra siempre, con o sin sesión: un visitante puede
+              armar su carrito antes de registrarse (se guarda en localStorage) y
+              recién iniciar sesión al momento de pagar. */}
+          <CartBadge />
+
           {user ? (
             <>
               {user.role === "admin" && (

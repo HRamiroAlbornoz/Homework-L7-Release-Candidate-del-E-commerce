@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
+import { renderWithProviders } from "@/test/renderWithProviders";
 import { Header } from "./Header";
 import { useAuth } from "../contexts/AuthContext";
 import type { UserProfile } from "../types/user";
@@ -26,12 +26,12 @@ function mockAuth(overrides: Partial<AuthState>): AuthState {
   return value;
 }
 
+// El Header ahora muestra el contador del carrito, así que necesita el
+// CartProvider además del router. Se usa el wrapper compartido en vez de armar
+// la combinación a mano: si mañana el Header consume un provider nuevo, se
+// agrega en un solo lugar y todos los tests lo heredan.
 function renderHeader() {
-  return render(
-    <MemoryRouter>
-      <Header />
-    </MemoryRouter>
-  );
+  return renderWithProviders(<Header />);
 }
 
 const sampleCustomer: UserProfile = {
@@ -235,13 +235,9 @@ describe("Header", () => {
   it("no recibe ninguna prop: toda la información sale de useAuth()", () => {
     mockAuth({ user: sampleAdmin });
 
-    render(
-      <MemoryRouter>
-        {
-          // @ts-expect-error -- Header no declara props de autenticación (ni ninguna otra).
-          <Header user={sampleAdmin} />
-        }
-      </MemoryRouter>
+    renderWithProviders(
+      // @ts-expect-error -- Header no declara props de autenticación (ni ninguna otra).
+      <Header user={sampleAdmin} />,
     );
 
     // Si Header aceptara un prop "user", este test fallaría en tiempo de compilación
