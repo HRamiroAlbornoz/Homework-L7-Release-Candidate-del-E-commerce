@@ -9,7 +9,17 @@ import {
   ALLOWED_IMAGE_TYPES,
   IMAGE_EXTENSION_BY_TYPE,
   MAX_IMAGE_SIZE_BYTES,
-} from "../../src/constants/uploads";
+// La extensión ".js" (y no ".ts", ni sin extensión) es obligatoria acá.
+//
+// El package.json declara "type": "module", así que esta función corre como ESM
+// en Node, y el resolvedor de ESM NO completa extensiones: pide la ruta exacta.
+// Se escribe ".js" y no ".ts" porque es el nombre que va a tener el archivo YA
+// COMPILADO, que es lo que existe en el servidor en tiempo de ejecución.
+//
+// Vite sí completa extensiones al empaquetar el frontend, y por eso este error
+// no aparece en desarrollo: se manifiesta recién al ejecutar la función
+// desplegada.
+} from "../../src/constants/uploads.js";
 
 // ============================================================================
 // POST /api/uploads/presign
