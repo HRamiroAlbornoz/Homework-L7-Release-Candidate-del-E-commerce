@@ -243,6 +243,58 @@ GET  .../products/<uuid>.png     200   (imagen pública)
 
 ---
 
+## Intervención 4 — Recorrer todos los flujos y corregir lo que aparezca
+
+**Prompt**
+
+> ¿Puedes probar todos los flujos que tenga la app?
+>
+> (Y después: "Vamos a corregir ahora todos los hallazgos.")
+
+**Resumen de la respuesta**
+
+Manejó la aplicación entera —catálogo, carrito, auth, checkout, panel de admin, guards y 404— en producción, con al menos un intento de romper cada flujo. Encontró cinco defectos, y un sexto **al verificar la corrección de uno de los cinco**. El detalle completo está en la sección "Verificación de todos los flujos" de [`production-checklist.md`](../production-checklist.md).
+
+Antes de escribir en producción preguntó hasta dónde avanzar, y resolvió la parte de credenciales sin pedirme ninguna: creó una cuenta con el propio formulario de registro y la usó para login, logout y checkout. Para el panel de admin solo hizo falta que yo cambiara el rol en la consola de Firebase.
+
+**Qué acepté y por qué**
+
+- **Probar las dos direcciones de cada defensa, no solo el ataque.** Verificar que un precio manipulado se rechaza es la mitad del trabajo; la otra mitad es que la compra legítima siga funcionando. Una regla que bloquea al atacante *y también* al cliente no es una corrección, es una caída de servicio.
+- **`details.kind` en vez de un código de error por motivo.** El `code` es lo que el frontend usa para decidir qué hacer, y ante los siete rechazos hace exactamente lo mismo. Multiplicar códigos obliga al cliente a conocer una lista que crece con cada validación nueva.
+- **`multipleOf(0.01)` en lugar de contar decimales a mano.** En punto flotante `0.1 + 0.2` no da `0.3`; un chequeo casero rechaza precios válidos en casos sueltos e impredecibles. Lo comprobó **antes** de escribir la corrección, no después.
+- **El hook `useDocumentTitle` en vez de una tabla de rutas en el layout.** La tabla funciona, pero crea un segundo lugar que hay que acordarse de actualizar al sumar una ruta — y el día que alguien se olvide, la pantalla nueva hereda el título de otra: el mismo bug de hoy con otra causa.
+- **Registrar en el checklist los escenarios que fallaron a propósito**, no solo los que pasaron. Un tilde sin el escenario al lado es una afirmación sin evidencia.
+
+**Qué se descartó en el camino**
+
+- **La primera corrección del panel de admin**, que centraba la tarjeta del formulario. Funcionaba y la medición lo confirmaba (310 px de margen a cada lado), pero dejaba el `<h1>` en un eje distinto. Se reemplazó por acotar la columna entera. La descartó la captura de pantalla, no un número.
+- **Medir el reacomodo de las acciones del checkout redimensionando la ventana.** La ventana del navegador no baja de 500 px, y a ese ancho las dos acciones seguían entrando: la medición habría dado "correcto" sin haber ejercitado nada. Se reprodujo la condición apretando el contenedor a 260 px.
+- **Verificar la Vercel Function con `vite dev`.** No existe ahí. Se subió la rama para que Vercel construyera un Preview y se atacó el endpoint realmente desplegado.
+
+**Evidencia**
+
+El caso que resume la ronda — el mismo campo, dos problemas opuestos, antes y después:
+
+```
+size: 6 MB  ->  kind: SIZE          "no puede pesar más de 5 MB"     (correcto)
+size: 0     ->  kind: SIZE          "no puede pesar más de 5 MB"     (al revés)
+size: 0     ->  kind: INVALID_SIZE  "está vacío o dañado"            (corregido)
+```
+
+Y la corrección del `<title>`, recorriendo las rutas sin recargar:
+
+```
+/                  Catálogo | E-commerce Henry
+/cart              Carrito | E-commerce Henry
+/checkout          Checkout | E-commerce Henry
+/admin             Panel de administración | E-commerce Henry
+/login             Iniciar sesión | E-commerce Henry
+/signup            Crear cuenta | E-commerce Henry
+(ruta inexistente) Página no encontrada | E-commerce Henry
+```
+
+---
+
 ## Lo que más aportó la IA en este homework
 
 No fue escribir código: fue **insistir en verificar**.
@@ -254,3 +306,7 @@ Tres de los cuatro problemas registrados en las notas de debugging del checklist
 - El error que veía el usuario (`500 FUNCTION_INVOCATION_FAILED`) no decía nada: la causa real solo estaba en los logs de Vercel.
 
 La conclusión que me llevo: **una suite en verde prueba lo que la suite mira.** Saber qué queda fuera de esa mirada es tan importante como la cobertura.
+
+La ronda de la Intervención 4 le agregó un matiz que no esperaba. Los seis defectos que aparecieron ahí no estaban fuera del alcance de los tests por ser difíciles: estaban fuera porque **ningún test se le ocurriría preguntar eso**. Que el título de la pestaña sea distinto en cada pantalla, que un archivo vacío reciba el consejo correcto, que el título y la tarjeta compartan un eje. Son cosas que se notan usando la aplicación, no ejecutándola.
+
+Y dos de los seis aparecieron **verificando la corrección de otro**. Eso reordena algo: la verificación no es el trámite del final, es donde sigue apareciendo trabajo. Cerrar un hallazgo sin volver a mirar la pantalla es cerrarlo a medias.

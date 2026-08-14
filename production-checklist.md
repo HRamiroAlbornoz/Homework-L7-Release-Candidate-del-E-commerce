@@ -3,6 +3,7 @@
 **URL de producción:** https://homework-l7-release-candidate-del-e.vercel.app/
 **Repositorio:** https://github.com/HRamiroAlbornoz/Homework-L7-Release-Candidate-del-E-commerce
 **Fecha de verificación:** 13 de agosto de 2026
+**Segunda ronda (todos los flujos, manejando la app):** 14 de agosto de 2026
 
 > Cada ítem marcado en este documento se **ejecutó**, no se dio por supuesto. Donde hubo algo que resolver, queda la nota.
 
@@ -73,6 +74,9 @@
 
 - [x] Se corrigieron los hallazgos de dos rondas de code review
   > Once hallazgos en total (5 sobre la Vercel Function, 6 sobre el resto), todos corregidos y cubiertos con tests. Ver la sección de notas de debugging.
+
+- [x] Se corrigieron los hallazgos de la verificación de flujos (PR #15)
+  > Cinco hallazgos, más uno que apareció **al verificar la corrección de otro**. Ninguno salió de leer código: los seis aparecieron manejando la aplicación. Ver la sección "Verificación de todos los flujos".
 
 - [x] **El precio de cada ítem se verifica contra el catálogo**
   > Era la limitación de seguridad conocida del release candidate, y quedó cerrada.
@@ -150,6 +154,99 @@ Verificados sobre la URL de producción, con la consola del navegador abierta.
   > Secuencia verificada en la pestaña Network: `POST /api/uploads/presign` (200) → `PUT` a S3 (200) → escritura en Firestore (200) → `GET` público de la imagen (200). El producto aparece en el catálogo con su imagen.
 
 - [x] Consola del navegador sin errores ni advertencias en todos los flujos
+
+---
+
+## Verificación de todos los flujos (14 de agosto de 2026)
+
+Segunda pasada, más ancha que los smoke tests de arriba: se recorrió **cada flujo de la app** manejando la interfaz, no leyendo código ni corriendo tests. El criterio fue no quedarse en el camino feliz — cada flujo incluye al menos un intento de romperlo.
+
+**Catálogo**
+
+- [x] 20 productos, orden alfabético, "Cargar más" trae 20 más sin duplicar ni saltear
+- [x] Búsqueda: `apple` → 3 resultados; `zzzz` → estado vacío con el término en el mensaje
+- [x] Búsqueda + categoría combinadas → *"No hay resultados para «zzzz» en la categoría Ropa."*
+- [x] **Una sola letra no dispara la búsqueda** (mínimo de 2 caracteres) y el filtro de categoría sobrevive
+
+**Carrito** — se verificó sin sesión, que es como debe funcionar
+
+- [x] El mismo producto dos veces suma cantidad en una línea, no duplica la línea
+- [x] Bajar la cantidad a 0 quita la línea y recalcula los totales
+- [x] **`localStorage` con totales mentidos** (`totalItems: 999, totalPrice: 1`) → corregidos solos al leer, y reescritos normalizados
+- [x] **`localStorage` con el schema roto** → carrito vaciado sin crashear, con salida al catálogo
+
+**Guards y errores**
+
+- [x] `/checkout` y `/admin` sin sesión → `/login`
+- [x] `/admin` **con sesión pero sin rol admin** → `/`, sin destello del panel
+- [x] `/login` con sesión ya iniciada → `/`
+- [x] Ruta inexistente → 404 con salida, un solo landmark `main`
+
+**Autenticación**
+
+- [x] Registro real, sesión que sobrevive a la recarga, y logout que expulsa de una ruta protegida
+- [x] Registro con un email ya usado → mensaje claro, sin crear nada
+- [x] **Login con email inexistente → mensaje genérico**, que no revela si el email existe
+- [x] Validaciones que cortan antes de tocar la red: campo vacío, email inválido, contraseña corta, sin número, confirmación distinta
+- [x] Una contraseña de 3 caracteres **no** da error en login: la regla de 8 es solo de registro
+
+**Checkout — las dos direcciones**
+
+- [x] `unitPrice` manipulado de 12590 a **100** → rechazado por las reglas, carrito intacto, **ninguna orden creada**
+- [x] Compra legítima de $20.700 → orden `dSMouuRUnPNKshlSnquf`, carrito vaciado
+- [x] Checkout con carrito vacío → sin botón de confirmar, con salida al catálogo
+
+**Panel de administración**
+
+- [x] El enlace del header aparece **solo** con rol admin
+- [x] Precios inválidos rechazados: negativo, cero y desmesurado, cada uno con su mensaje
+- [x] **Un `.txt` saltándose el filtro `accept`** → rechazado en el navegador, sin request
+- [x] Alta real: `presign` (200) → `PUT` a S3 (200) → escritura en Firestore, con nombre de archivo UUID y `X-Amz-Expires=300`
+- [x] **Doble click inmediato en "Crear producto"** → un solo producto creado; el `useRef` gana la carrera al re-render
+- [x] El producto creado desde el panel se puede comprar: orden `MD4HosIJA31a6rIyZE5a`
+
+**Endpoint de firma, atacado desde la consola del navegador**
+
+| Request | Respuesta |
+|---|---|
+| Sin `Authorization` | `401 UNAUTHENTICATED` |
+| `Bearer` con basura | `401 INVALID_TOKEN` |
+| Token válido + `application/x-msdownload` | `400 INVALID_UPLOAD` |
+| Token válido + **`image/svg+xml`** | `400 INVALID_UPLOAD` |
+| Token válido + 6 MB | `400 INVALID_UPLOAD` |
+| Token válido + body vacío o no-JSON | `400 INVALID_UPLOAD` |
+
+> El rechazo del SVG es el más valioso de la tabla. El navegador lo trata como imagen, pero un SVG es un documento que **puede ejecutar JavaScript**. Que el servidor lo niegue muestra que la whitelist se armó pensando en qué formato es peligroso, no en cuáles son cómodos.
+
+- [x] Contraste WCAG AA medido en vivo contra el fondo real heredado: **0 incumplimientos**
+- [x] Consola limpia en los siete flujos
+
+**Los seis hallazgos y su corrección** (todos en el PR #15):
+
+| Hallazgo | Corrección |
+|---|---|
+| El panel de admin era la única pantalla sin centrar | Se acota la columna entera, no la tarjeta |
+| El checkout no tenía enlace de vuelta al carrito, aunque el mensaje de error lo pedía | Fila de acciones con el enlace junto al botón |
+| El precio aceptaba 3 decimales | `multipleOf(0.01)` en el schema + `step` en el input |
+| Los 5 motivos de rechazo de una subida devolvían el mismo mensaje | `details.kind`, manteniendo un solo `code` |
+| Un archivo de 0 bytes recibía el mensaje opuesto a su problema | `kind: INVALID_SIZE`, leyendo `too_big` vs `too_small` |
+| El `<title>` no cambiaba en ninguna de las 7 rutas | Hook `useDocumentTitle`, una línea por página |
+
+**Verificación final, con las seis correcciones en un mismo build.** Cada una se había verificado por separado —tres contra `vite dev`, dos contra un Preview anterior— y ninguna pasada las había ejercitado juntas. Antes del merge se recorrió el Preview del HEAD de la rama, y después del merge se repitió sobre producción:
+
+- [x] Las 7 rutas con su título en el **build minificado y con code splitting**
+  > No es lo mismo que en desarrollo: `/checkout` y `/admin` son chunks que se descargan aparte, con `React.lazy` y un `Suspense` en el medio, así que el orden en que se resuelven los efectos —y quién escribe el título último— podía diferir.
+
+- [x] Checkout en las dos direcciones sobre el build final
+  > Precio manipulado a $99 → rechazado con el enlace al carrito visible a 16 px del error. Compra legítima de $83.520 → orden `cw5h1hyPJLCET0plTMXo`.
+
+- [x] **Sin regresión en el catálogo**
+  > Tres de los seis commits tocan `src/index.css`, el mismo archivo donde vive la alineación de las tarjetas corregida en el PR #14. Medido: `diferenciaPorFilaEnPx: [0,0,0,0,0]` en las cinco filas, sin desborde horizontal.
+
+- [x] El commit desplegado coincide con el HEAD de `main` (`41d81b6`)
+  > Esta vez Vercel disparó el build de producción por su cuenta, a diferencia de la nota 3. Se comprobó igual: es un chequeo de dos segundos y es la diferencia entre "mergeé" y "está en producción".
+
+> **Un detalle de la corrida que vale como advertencia.** En la primera pasada sobre producción, `/login` y `/signup` redirigieron a `/` y sus títulos no aparecieron. No era un fallo: era la sesión de las pruebas anteriores, todavía viva, comportándose exactamente como debe. Dar esa medición por buena habría dejado dos rutas reportadas como verificadas sin estarlo. **Verificar una pantalla exige primero estar en las condiciones en que esa pantalla existe.**
 
 ---
 
@@ -294,3 +391,45 @@ where("userId", "==", uid)
 **Consecuencia para el futuro, que es lo que vale la pena registrar:** una pantalla de "mis órdenes" **debe** incluir ese `where` en la consulta. No alcanza con confiar en que la regla filtre — no filtra. Y el modo de fallo es engañoso: un `403` que parece un problema de permisos del usuario cuando en realidad es una consulta mal construida.
 
 **Estado:** no es un bug del proyecto. Las reglas y los datos están bien; lo que estaba mal era mi forma de consultarlos al verificar. Queda documentado para que la próxima persona que liste una colección protegida no pierda una tarde con esto.
+
+### 9. Una medición correcta que contestaba la pregunta equivocada
+
+**Contexto:** el panel de administración era la única pantalla sin centrar. La corrección obvia era centrar la tarjeta del formulario: `margin: 24px auto 0`.
+
+**La medición confirmó el arreglo:** 310 px de margen a cada lado, tarjeta perfectamente centrada.
+
+**Lo que la medición no podía mostrar:** el `<h1>` seguía arrancando en el borde izquierdo. Antes del cambio los dos elementos estaban pegados a la izquierda — feos, pero **alineados entre sí**. Después, cada uno quedó en un eje distinto. El defecto no vivía en la tarjeta: vivía en la *relación* entre la tarjeta y el título.
+
+Apareció en una captura de pantalla, no en un número.
+
+**Corrección definitiva:** acotar la columna entera (`.admin-page { max-width: 560px }`) y quitarle a la tarjeta su `max-width` propio, para que ocupe el ancho de la columna. Así la alineación se cumple sola en cualquier breakpoint, en vez de depender de que dos anchos fijos coincidan con el `padding` de turno.
+
+**La lección, que es distinta de la del hallazgo anterior sobre alineaciones:** un número aislado responde por un elemento; un defecto de composición vive **entre** elementos. Medir el objeto que tocaste confirma que lo tocaste bien, no que la pantalla quedó bien. Para eso hay que mirarla.
+
+### 10. El arreglo de un mensaje confuso escondía un mensaje al revés
+
+**Detectado al verificar la corrección de otro hallazgo**, no al escribirla.
+
+**Contexto:** los cinco motivos de rechazo del endpoint de subida devolvían el mismo texto. Se agregó `details.kind` para distinguirlos, y al probar los casos uno por uno contra el Preview desplegado apareció esto:
+
+| Enviado | Respuesta |
+|---|---|
+| `size: 6 MB` | `kind: SIZE` — *"no puede pesar más de 5 MB"* ✅ |
+| **`size: 0`** | `kind: SIZE` — *"no puede pesar más de 5 MB"* ❌ |
+
+Un archivo de 0 bytes recibía el consejo **opuesto** a su problema: buscá una imagen más chica.
+
+**Por qué importa:** no es un caso rebuscado. Una descarga que se cortó deja un archivo con nombre, extensión y hasta `type` correctos, porque el navegador deduce el tipo de la extensión **sin mirar el contenido**.
+
+**Causa:** la clasificación miraba **qué campo** falló (`size`) y no **por qué** falló. Dos problemas opuestos del mismo campo caían en la misma categoría.
+
+**Corrección:** leer el motivo del issue de Zod.
+
+```ts
+if (problemaDelTamano?.code === "too_big") return "SIZE";
+if (problemaDelTamano?.code === "too_small") return "INVALID_SIZE";
+```
+
+Y la misma comprobación en `validateImageFile`, para que el usuario se entere en su propia máquina: verificado subiendo un PNG real de 0 bytes, con **0 requests al presign**.
+
+**La lección:** verificar caso por caso encuentra cosas que verificar "que ande" no encuentra. La corrección original funcionaba —los cinco motivos ya se distinguían— y aun así dejaba un mensaje que decía lo contrario de la verdad. El defecto solo se ve cuando se leen las respuestas **de a una**, comparando cada una con la pregunta que la generó.

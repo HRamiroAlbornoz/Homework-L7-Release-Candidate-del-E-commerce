@@ -80,15 +80,19 @@ E-commerce multi-rol con React + TypeScript + Vite, Firestore y Firebase Authent
 
 ## Rutas
 
-| Ruta | Acceso | Página |
-|---|---|---|
-| `/` | Público | Catálogo |
-| `/login`, `/signup` | Público (redirigen a `/` si ya hay sesión) | Autenticación |
-| `/cart` | **Público** | Carrito |
-| `/checkout` | Requiere sesión | Checkout |
-| `/admin` | Requiere sesión + `role === "admin"` | Panel de administración |
+| Ruta | Acceso | Página | Título de la pestaña |
+|---|---|---|---|
+| `/` | Público | Catálogo | `Catálogo` |
+| `/login` | Público (redirige a `/` si ya hay sesión) | Autenticación | `Iniciar sesión` |
+| `/signup` | Público (redirige a `/` si ya hay sesión) | Autenticación | `Crear cuenta` |
+| `/cart` | **Público** | Carrito | `Carrito` |
+| `/checkout` | Requiere sesión | Checkout | `Checkout` |
+| `/admin` | Requiere sesión + `role === "admin"` | Panel de administración | `Panel de administración` |
+| cualquier otra | Público | 404 | `Página no encontrada` |
 
 `/cart` es pública a propósito: un visitante arma su carrito antes de registrarse (vive en `localStorage`) y la sesión recién se exige al pagar. Obligar a iniciar sesión para *ver* el carrito es fricción que hace abandonar compras.
+
+**Cada página declara su propio título** con el hook `useDocumentTitle`, que le agrega ` | E-commerce Henry` al final. Es obligatorio en una pantalla nueva: el navegador carga `index.html` una sola vez, así que sin esa línea la pantalla hereda el título de la anterior. Los títulos de la tabla son los que se ven al navegar, sin recargar.
 
 ## Testing
 
