@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useProducts } from "../contexts/ProductsContext";
 import { useDebounce } from "../hooks/useDebounce";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { SearchBar } from "../components/SearchBar";
 import { CategoryFilter } from "../components/CategoryFilter";
 import { ProductGrid } from "../components/ProductGrid";
@@ -42,6 +43,8 @@ function buildEmptyMessage(searchPrefix: string | undefined, categoryId: string 
 }
 
 export function ProductsPage() {
+  useDocumentTitle("Catálogo");
+
   const [searchInput, setSearchInput] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const debouncedSearch = useDebounce(searchInput, DEBOUNCE_MS);

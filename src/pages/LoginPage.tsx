@@ -3,8 +3,14 @@ import { useAuth } from "../contexts/AuthContext";
 import { LoginForm } from "../components/auth/LoginForm";
 import { LoadingState } from "../components/states/LoadingState";
 import { AUTH_LOADING_MESSAGE } from "../lib/authConstants";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 
 export function LoginPage() {
+  // Antes de los "return" tempranos: los hooks se ejecutan siempre y en el
+  // mismo orden. Esta página tiene dos salidas anticipadas (loading y sesión ya
+  // iniciada), así que la regla es fácil de violar sin darse cuenta.
+  useDocumentTitle("Iniciar sesión");
+
   const { user, loading, error } = useAuth();
 
   // Mismo criterio que ProtectedRoute: loading se chequea ANTES que user,

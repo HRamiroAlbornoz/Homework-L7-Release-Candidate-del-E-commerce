@@ -3,9 +3,16 @@ import { Link } from "react-router";
 import { EmptyState } from "../components/states/EmptyState";
 import { CartItemRow } from "../features/cart/components/CartItemRow";
 import { useCart } from "../features/cart/useCart";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { formatPrice } from "../lib/formatPrice";
 
 export function CartPage() {
+  // Arriba de todo y ANTES del "return" temprano del carrito vacío: los hooks
+  // tienen que ejecutarse siempre, en el mismo orden, en cada render. Si esta
+  // línea estuviera después del "if (items.length === 0)", React vería un
+  // número distinto de hooks según el estado del carrito y rompería.
+  useDocumentTitle("Carrito");
+
   const { items, totalItems, totalPrice, clearCart } = useCart();
 
   // Estado local del pedido de confirmación para vaciar el carrito. Es una

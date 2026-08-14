@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 
 // Antes esta página era solo un título, y eso la convertía en un callejón sin
 // salida: alguien que llega desde un enlace roto se queda sin ninguna acción
@@ -6,6 +7,8 @@ import { Link } from "react-router";
 // productos, el checkout sin nada que comprar) sí ofrecen un camino de vuelta;
 // esta había quedado afuera de ese criterio.
 export function NotFoundPage() {
+  useDocumentTitle("Página no encontrada");
+
   return (
     <div className="page">
       <h1>Página no encontrada</h1>

@@ -3,8 +3,12 @@ import { useAuth } from "../contexts/AuthContext";
 import { SignupForm } from "../components/auth/SignupForm";
 import { LoadingState } from "../components/states/LoadingState";
 import { AUTH_LOADING_MESSAGE } from "../lib/authConstants";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 
 export function SignupPage() {
+  // Antes de los "return" tempranos, por la misma regla de hooks que LoginPage.
+  useDocumentTitle("Crear cuenta");
+
   const { user, loading, error } = useAuth();
 
   // Mismo criterio que ProtectedRoute: loading se chequea ANTES que user,

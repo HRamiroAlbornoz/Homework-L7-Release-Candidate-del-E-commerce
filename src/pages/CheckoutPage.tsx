@@ -3,11 +3,17 @@ import { Link } from "react-router";
 import { EmptyState } from "../components/states/EmptyState";
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../features/cart/useCart";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { formatPrice } from "../lib/formatPrice";
 import { mapOrderError, type OrderError } from "../lib/orderErrors";
 import { createOrderFromCart } from "../services/ordersService";
 
 export function CheckoutPage() {
+  // Un solo título para las tres pantallas de esta página (compra pendiente,
+  // confirmación y carrito vacío): todas son "el checkout" para quien mira la
+  // pestaña o el historial.
+  useDocumentTitle("Checkout");
+
   const { user } = useAuth();
   const { items, totalItems, totalPrice, clearCart } = useCart();
 
