@@ -59,7 +59,12 @@ export function ProductsPage() {
   }, [categoryId, searchPrefix]);
 
   return (
-    <main className="products-page">
+    // <div> y no <main>: RootLayout ya envuelve todas las rutas en un <main>,
+    // y anidar uno dentro de otro deja la página con DOS landmarks de contenido
+    // principal. Un lector de pantalla los ofrece como dos destinos distintos y
+    // quien navega por landmarks no sabe cuál es el bueno. Debe haber
+    // exactamente uno por página.
+    <div className="products-page">
       <h1>Catálogo de productos</h1>
 
       <div className="products-page__filters">
@@ -83,6 +88,6 @@ export function ProductsPage() {
           <LoadMoreButton hasMore={hasMore} loading={loadingMore} onClick={loadMore} />
         </>
       )}
-    </main>
+    </div>
   );
 }

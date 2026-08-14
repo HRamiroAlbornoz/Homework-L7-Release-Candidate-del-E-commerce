@@ -32,7 +32,13 @@ export function ProductCard({ product }: ProductCardProps) {
           loading="lazy"
         />
       )}
-      <h3 className="product-card__name">{product.name}</h3>
+      {/*
+        h2 y no h3: el único encabezado por encima es el h1 de la página, así
+        que h3 dejaba un nivel vacío en el medio. Quien navega por encabezados
+        con un lector de pantalla percibe ese salto como si se hubiera perdido
+        una sección. CartItemRow ya usaba h2 en la misma situación.
+      */}
+      <h2 className="product-card__name">{product.name}</h2>
       <p className="product-card__category">{categoryLabel}</p>
       {product.price !== undefined && (
         <p className="product-card__price">{formatPrice(product.price)}</p>

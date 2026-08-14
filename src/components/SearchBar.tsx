@@ -14,7 +14,12 @@ export function SearchBar({ value, onChange }: SearchBarProps) {
         type="search"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        placeholder="Nombre del producto (mínimo 2 caracteres)"
+        // Corto a propósito: en una pantalla de 375px el texto anterior
+        // ("Nombre del producto (mínimo 2 caracteres)") se cortaba justo antes
+        // del paréntesis de cierre y quedaba leyéndose como una frase truncada.
+        // El detalle del mínimo ya está en el texto de ayuda de abajo, que sí se
+        // ve completo y además lo anuncia el lector de pantalla.
+        placeholder="Nombre del producto"
         aria-describedby="product-search-hint"
       />
       <span id="product-search-hint" className="visually-hidden">
