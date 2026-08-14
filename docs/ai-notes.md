@@ -101,3 +101,156 @@ Tres de los ocho agentes marcaron de forma independiente `endAt(prefix + '')`
 6. **Guard de `loadMore` vulnerable a doble-click**: leía `state.loadingMore`, que solo se actualiza en el próximo render de React, no al instante. Un doble click muy rápido podía disparar dos lecturas a Firestore para la misma página. **Aceptado**: reemplazado por un `useRef` que se lee/escribe sincrónicamente.
 
 Se agregaron 2 tests de regresión nuevos en `ProductsContext.test.tsx` que simulan resolución de promesas fuera de orden — reproducen exactamente los escenarios de los hallazgos 1 y 2, y fallarían sin el fix aplicado.
+
+---
+
+# Notas de uso de IA — Homework L7 (Release Candidate)
+
+Todo el trabajo de este homework se hizo en colaboración con Claude (Claude Code). Las intervenciones se registran abajo en el formato que pide el enunciado. Los "prompts" son los pedidos reales de la conversación, no reconstrucciones posteriores.
+
+## Intervención 1 — Edge cases del `cartReducer`, priorizados por impacto
+
+**Prompt**
+
+> Vamos a hacer una Homework de Henry Boot Camp. [...] Analizá el enunciado y planificá.
+>
+> (Y más adelante, sobre el reducer:) escribí `cartReducer.test.ts`, los casos del Paso 3.
+
+**Resumen de la respuesta**
+
+Propuso 16 tests agrupados por acción, priorizados así:
+
+1. **Consistencia de totales** — la falla de mayor impacto: mostrar "3 productos" con 2 en la lista.
+2. **Deduplicación** — que agregar el mismo producto no cree dos filas.
+3. **Cantidad 0 o negativa** — que elimine el ítem en vez de dejar un total negativo.
+4. **Aritmética de punto flotante** — `0.1 + 0.2` da `0.30000000000000004`.
+5. **Inmutabilidad** — que el reducer no mute el estado recibido.
+6. **Tope máximo por producto** y **producto inexistente**.
+
+**Qué acepté y por qué**
+
+- **Todos los casos**, porque cada uno describe un fallo que el usuario notaría.
+- Sobre todo, la propuesta de que **un único helper recalcule los totales** al final de cada acción. Eso convierte "acordarse de hacerlo bien cuatro veces" en "que no haya forma de hacerlo mal": ninguna acción arma el estado a mano.
+- El caso de punto flotante, que sale directo de la regla del `CLAUDE.md` sobre montos monetarios.
+
+**Qué rechacé y por qué**
+
+- Un test de "acción desconocida devuelve el mismo estado". Con la unión discriminada completa, TypeScript ya garantiza que no existen otros valores de `type`, y escribirlo habría requerido un `as unknown as CartAction` — desactivar el chequeo para probar algo que el chequeo ya cubre.
+
+**Evidencia**
+
+Se verificó que los tests **detectan errores reales**, rompiendo el reducer a propósito:
+
+| Qué se rompió | Qué reportaron los tests |
+|---|---|
+| Se quitó el redondeo a centavos | `expected 0.30000000000000004 to be 0.3` |
+| Se forzó que siempre agregue una fila nueva | `expected [...] to have a length of 1 but got 2` |
+
+Un test que pasa siempre no aporta información. Estos fallan cuando la lógica se rompe. Salida completa en [`docs/test-output.txt`](test-output.txt).
+
+---
+
+## Intervención 2 — Tests del flow con mocks (Opción A y Opción B)
+
+**Prompt**
+
+> Sabiendo que B es viable sin AWS pero exige construir también el CRUD de admin, ¿qué alcance elegís?
+>
+> → **A + B: todos los criterios PLUS**
+
+**Resumen de la respuesta**
+
+Para el checkout (Opción A): mockear la **capa de servicios** con `vi.mock`, cubriendo éxito, error y doble envío. Para el alta de producto (Opción B): **MSW** interceptando las dos requests (`POST /api/uploads/presign` y `PUT` a S3), verificando además el orden en que salen.
+
+**Qué acepté y por qué**
+
+- **Mockear el service y no el SDK de Firebase** en el checkout. Imitar `addDoc`, `collection` y `serverTimestamp` habría hecho que el test probara que sabemos usar Firebase, en vez de que la página reacciona bien según la operación salga bien o mal.
+- **MSW para las llamadas HTTP.** Intercepta a nivel de red, así que el código llama a `fetch` de verdad con su URL, su método y su cuerpo reales. Un `vi.fn()` que devuelve un objeto no detectaría un cambio de endpoint.
+- **`onUnhandledRequest: "error"`**: cualquier request sin handler rompe el test en lugar de salir a la red.
+- **Subir la imagen ANTES de crear el producto.** Al revés, si la subida falla queda un producto en el catálogo apuntando a una imagen inexistente, visible para todos los clientes y sin forma automática de detectarlo. En este orden, lo peor que puede pasar es una imagen huérfana en el bucket: invisible y barata de limpiar.
+
+**Qué rechacé y por qué**
+
+- **La primera versión del test de doble envío.** Usaba `user.dblClick()` y **pasaba igual con la protección quitada**: `userEvent` espera a que React re-renderice entre un click y el siguiente, así que el segundo encuentra el botón ya deshabilitado. El test verificaba el atributo `disabled`, no la protección real. Se reescribió disparando los dos clicks dentro de un mismo `act()`, sin re-render en el medio.
+- **Poner `AuthProvider` y `ProductsProvider` dentro de `renderWithProviders`**, como sugiere la plantilla del enunciado. En este repositorio, importar `ProductsProvider` arrastra `lib/env.ts`, que valida las variables de entorno **en el momento de importarse**: bastaría con importar el wrapper para que el CI reventara antes de correr un solo test. La decisión quedó documentada dentro del propio archivo.
+- **Espiar `dispatch` como aserción principal**, que el enunciado marca explícitamente como anti-patrón. Todas las aserciones miran resultados observables (`items`, `totalItems`, `totalPrice`), así que sobreviven a un refactor del provider.
+
+**Evidencia**
+
+El test de doble envío, verificado en las dos direcciones:
+
+| Estado del código | Resultado |
+|---|---|
+| Sin el cerrojo del `useRef` | `expected to be called 1 times, but got 2 times` |
+| Con el cerrojo | Pasa |
+
+Y el de MSW afirmando el orden de las requests:
+
+```ts
+expect(requestLog).toEqual([
+  "POST /api/uploads/presign",
+  "PUT /products/fake-uuid.png",
+]);
+```
+
+---
+
+## Intervención 3 — Checklist de deploy para Vercel + Vite + Functions
+
+**Prompt**
+
+> Continuemos con la Etapa B.
+>
+> (Y a lo largo del deploy: el diagnóstico de los errores de producción y el armado del checklist.)
+
+**Resumen de la respuesta**
+
+Separó el deploy en dos etapas verificables (primero la app con las variables públicas, después S3), propuso el grep de secretos sobre `dist/`, y armó [`production-checklist.md`](../production-checklist.md) ejecutando cada ítem en vez de marcarlo.
+
+**Qué acepté y por qué**
+
+- **Dividir el deploy en dos etapas.** Si algo falla en la primera, el problema está en la configuración base de Vercel; si falla en la segunda, en AWS. Mezclarlas convierte cualquier error en una búsqueda entre diez variables posibles.
+- **Nombrar las variables `S3_*` y no `AWS_*`.** Las Vercel Functions corren sobre AWS Lambda, donde `AWS_ACCESS_KEY_ID` y `AWS_SECRET_ACCESS_KEY` están reservadas por el runtime y serían pisadas.
+- **El grep de secretos sobre `dist/` con contraprueba**: buscar también un valor que **sí** debe estar (el id del proyecto de Firebase) y encontrarlo. Sin eso, un "no encontré nada" no distingue entre "no hay secretos" y "el método no busca bien".
+- **Sacar `@vercel/node`.** Lo habíamos instalado solo para dos definiciones de tipos, y traía 105 paquetes con **7 vulnerabilidades altas**. La firma estándar de la Web (`Request` a `Response`) no necesita esos tipos.
+
+**Qué rechacé y por qué**
+
+- **`npm audit fix --force`.** Proponía bajar `@vercel/node` de la versión 5 a la 3 y `firebase-admin` de la 14 a la 10. Eso no es arreglar: es retroceder años de versiones para tapar un aviso. La línea "which is a breaking change" en la salida de `npm audit` es una señal de alarma, no una recomendación.
+- **Cargar el `FIREBASE_SERVICE_ACCOUNT_JSON` en Vercel.** Tras rediseñar la función para verificar el token con `jose`, dejó de hacer falta. Una credencial con acceso total al proyecto que deja de vivir en un servidor es una superficie de ataque menos.
+- **Relajar temporalmente las reglas de Firestore** para poder correr el seed. Habría abierto una ventana en la que cualquiera podía escribir en el catálogo, y dejaba el repositorio y el proyecto desincronizados si el paso de restaurar fallaba. En su lugar se migró el seed al SDK de Admin.
+
+**Evidencia**
+
+```
+=== ¿hay secretos en dist/? ===
+  AKIA              -> 0 archivo(s)
+  S3_SECRET         -> 0 archivo(s)
+  SECRET_ACCESS_KEY -> 0 archivo(s)
+  BEGIN PRIVATE KEY -> 0 archivo(s)
+  service_account   -> 0 archivo(s)
+  private_key       -> 0 archivo(s)
+```
+
+Y el flujo de subida verificado de punta a punta en producción, leído de la pestaña Network:
+
+```
+POST /api/uploads/presign        200
+PUT  .../products/<uuid>.png     200   (a S3, con URL firmada)
+POST .../Firestore/Write         200   (producto creado)
+GET  .../products/<uuid>.png     200   (imagen pública)
+```
+
+---
+
+## Lo que más aportó la IA en este homework
+
+No fue escribir código: fue **insistir en verificar**.
+
+Tres de los cuatro problemas registrados en las notas de debugging del checklist eran invisibles desde los tests, y los tres aparecieron por probar contra el despliegue real:
+
+- Los 390 tests pasaban con la Vercel Function **completamente rota**, porque MSW intercepta la request y el código de la función nunca se ejecuta.
+- El CI estaba en verde con producción sirviendo código viejo.
+- El error que veía el usuario (`500 FUNCTION_INVOCATION_FAILED`) no decía nada: la causa real solo estaba en los logs de Vercel.
+
+La conclusión que me llevo: **una suite en verde prueba lo que la suite mira.** Saber qué queda fuera de esa mirada es tan importante como la cobertura.
