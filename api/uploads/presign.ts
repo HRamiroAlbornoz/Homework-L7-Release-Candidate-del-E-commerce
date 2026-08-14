@@ -236,7 +236,7 @@ function errorResponse(
 // El síntoma que arregla esto: los cinco motivos devolvían exactamente el mismo
 // mensaje y el mismo código, así que un reporte de "no me deja subir la imagen"
 // no se podía diagnosticar ni con la respuesta ni con los registros.
-type InvalidUploadKind = "CONTENT_TYPE" | "SIZE" | "MALFORMED_BODY";
+type InvalidUploadKind = "CONTENT_TYPE" | "SIZE" | "INVALID_SIZE" | "MALFORMED_BODY";
 
 const MAX_IMAGE_SIZE_MB = MAX_IMAGE_SIZE_BYTES / (1024 * 1024);
 
@@ -246,6 +246,11 @@ const MAX_IMAGE_SIZE_MB = MAX_IMAGE_SIZE_BYTES / (1024 * 1024);
 const INVALID_UPLOAD_MESSAGES: Record<InvalidUploadKind, string> = {
   CONTENT_TYPE: "La imagen debe ser JPG, PNG o WebP.",
   SIZE: `La imagen no puede pesar más de ${MAX_IMAGE_SIZE_MB} MB.`,
+  // Un archivo de 0 bytes NO es un archivo demasiado grande, y decirle eso al
+  // usuario lo manda a buscar una imagen más chica cuando el problema es el
+  // contrario. Pasa de verdad: una descarga cortada o un archivo dañado tienen
+  // nombre y extensión correctos, y el navegador los deja elegir igual.
+  INVALID_SIZE: "El archivo de imagen está vacío o dañado. Probá con otro.",
   MALFORMED_BODY: "No pudimos leer los datos de la imagen. Actualizá la página e intentá de nuevo.",
 };
 
@@ -287,8 +292,23 @@ function kindFromIssues(issues: PresignIssues): InvalidUploadKind {
   if (camposConError.has("contentType")) {
     return "CONTENT_TYPE";
   }
+
   if (camposConError.has("size")) {
-    return "SIZE";
+    // No alcanza con saber QUÉ campo falló: hay que saber POR QUÉ. "too_big" es
+    // un archivo que se pasa del límite; "too_small" es uno de 0 bytes (o un
+    // número negativo, que solo puede venir de una request fabricada a mano).
+    // Los dos casos son del mismo campo y necesitan mensajes opuestos.
+    const problemaDelTamano = issues.find((issue) => issue.path[0] === "size");
+
+    if (problemaDelTamano?.code === "too_big") {
+      return "SIZE";
+    }
+    if (problemaDelTamano?.code === "too_small") {
+      return "INVALID_SIZE";
+    }
+    // Cualquier otra cosa (un string donde iba un número, un decimal) significa
+    // que el cliente no está mandando lo que este endpoint espera.
+    return "MALFORMED_BODY";
   }
 
   // Ningún campo conocido falló: el cuerpo no era ni siquiera un objeto.

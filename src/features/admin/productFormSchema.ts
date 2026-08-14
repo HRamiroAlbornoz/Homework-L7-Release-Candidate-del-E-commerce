@@ -67,6 +67,15 @@ export function validateImageFile(file: File | null): string | null {
     return "La imagen debe ser JPG, PNG o WebP.";
   }
 
+  // Un archivo de 0 bytes pasa todos los demás chequeos: tiene nombre,
+  // extensión y hasta el "type" correcto, porque el navegador lo deduce de la
+  // extensión sin mirar el contenido. Ocurre con una descarga que se cortó o un
+  // archivo dañado. Sin esta línea, el usuario lo sube, espera, y recién el
+  // servidor lo rechaza — dos viajes de red para algo que se sabe acá mismo.
+  if (file.size === 0) {
+    return "El archivo de imagen está vacío o dañado. Probá con otro.";
+  }
+
   if (file.size > MAX_IMAGE_SIZE_BYTES) {
     return "La imagen no puede pesar más de 5 MB.";
   }
