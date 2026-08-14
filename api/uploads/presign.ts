@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { createRemoteJWKSet, jwtVerify } from "jose";
+import { createRemoteJWKSet, errors as joseErrors, jwtVerify } from "jose";
 import { z } from "zod";
 import {
   ALLOWED_IMAGE_TYPES,
@@ -55,6 +55,14 @@ const PRESIGN_EXPIRATION_SECONDS = 300;
 // Prefijo dentro del bucket. La política del usuario IAM debe limitarse a este
 // prefijo: aunque la credencial se filtrara, no podría tocar nada más.
 const UPLOAD_KEY_PREFIX = "products";
+
+// Tiempo máximo de espera al leer el perfil desde la API REST de Firestore.
+//
+// Sin límite, una respuesta que nunca llega mantiene ocupada la invocación
+// hasta que Vercel la mata por timeout de plataforma, y el cliente recibe un
+// error genérico del proxy en vez del formato { code, message } de esta API.
+// Cortar por nuestra cuenta permite responder con un error propio y registrarlo.
+const FIRESTORE_READ_TIMEOUT_MS = 5000;
 
 // ---------------------------------------------------------------------------
 // Configuración del servidor
@@ -145,7 +153,17 @@ const firestoreUserDocSchema = z.object({
  * esa regla cambia, este código deja de poder leer, que es exactamente el
  * comportamiento correcto.
  *
- * @returns el rol, o null si el documento no existe o no se pudo leer.
+ * @returns el rol, o null si el usuario NO TIENE perfil (404).
+ * @throws  si no se pudo determinar el rol por un problema del servidor
+ *          (Firestore caído, saturado, timeout, red). Quien llama lo traduce a
+ *          un 500, no a un 403.
+ *
+ * Esa distinción es la parte importante de esta función. "El usuario no es
+ * admin" y "no pude averiguar si el usuario es admin" son dos situaciones
+ * distintas, y confundirlas tiene dos costos: al usuario se le dice que no tiene
+ * permisos cuando en realidad se cayó un servicio (un mensaje que lo manda a
+ * pedir permisos que ya tiene), y el incidente queda invisible en los registros
+ * porque un 403 es una respuesta esperable.
  */
 async function readUserRole(uid: string, idToken: string, projectId: string): Promise<string | null> {
   // encodeURIComponent sobre el uid: nunca se concatena un valor de origen
@@ -157,19 +175,36 @@ async function readUserRole(uid: string, idToken: string, projectId: string): Pr
 
   const response = await fetch(documentUrl, {
     headers: { Authorization: `Bearer ${idToken}` },
+    // Si se agota el tiempo, fetch rechaza con un TimeoutError que se propaga
+    // hasta el catch general: 500 y queda registrado.
+    signal: AbortSignal.timeout(FIRESTORE_READ_TIMEOUT_MS),
   });
 
-  // 404 (no existe el perfil) o 403 (las reglas lo rechazan) llegan acá. En los
-  // dos casos la respuesta es la misma: no se pudo determinar un rol, así que no
-  // se asume ninguno.
-  if (!response.ok) {
+  // 404 es el único "no" legítimo: el usuario existe en Auth pero todavía no
+  // tiene documento de perfil. No tiene rol, y por lo tanto no es admin.
+  if (response.status === 404) {
     return null;
+  }
+
+  // Cualquier otro fallo (429, 500, 503, o un 403 —que significaría que las
+  // reglas ya no permiten leer el perfil propio, o sea una configuración rota—)
+  // es un problema del servidor, no del usuario.
+  if (!response.ok) {
+    throw new Error(
+      `Firestore respondió ${response.status} al leer el perfil del usuario`,
+    );
   }
 
   const body: unknown = await response.json();
   const parsed = firestoreUserDocSchema.safeParse(body);
 
-  return parsed.success ? parsed.data.fields.role.stringValue : null;
+  // El documento existe pero no tiene la forma esperada: es un dato inconsistente
+  // en la base, no un usuario sin permisos.
+  if (!parsed.success) {
+    throw new Error("El documento de perfil no tiene la forma esperada");
+  }
+
+  return parsed.data.fields.role.stringValue;
 }
 
 // ---------------------------------------------------------------------------
@@ -219,7 +254,32 @@ export async function POST(request: Request): Promise<Response> {
     let uid: string;
     try {
       uid = await verifyFirebaseIdToken(idToken, projectId);
-    } catch {
+    } catch (error) {
+      // No todo fallo al verificar significa "el token es malo".
+      //
+      // Para comprobar la firma hay que descargar las claves públicas de Google.
+      // Si esa descarga falla (Google caído, un problema de red desde la
+      // función, o un timeout), el token puede ser perfectamente válido: lo que
+      // falló es la infraestructura. Responder 401 "Iniciá sesión de nuevo"
+      // mandaría al usuario a hacer algo que no puede arreglar el problema, y
+      // encima el incidente quedaría escondido detrás de un código de estado que
+      // parece normal.
+      //
+      // jose lanza sus propios errores (JOSEError) cuando el token no cumple:
+      // firma inválida, vencido, emisor o audiencia equivocados. Cualquier otra
+      // cosa —un TypeError de fetch, por ejemplo— no vino del token.
+      const esProblemaDeInfraestructura =
+        !(error instanceof joseErrors.JOSEError) || error instanceof joseErrors.JWKSTimeout;
+
+      if (esProblemaDeInfraestructura) {
+        // Se relanza para que lo tome el catch general: 500 y queda registrado.
+        throw error;
+      }
+
+      // Token inválido de verdad. Se registra igual —con el código del error de
+      // jose, nunca con el token— porque una ráfaga de estos puede ser el
+      // síntoma de alguien probando tokens fabricados.
+      console.warn("[presign] Token rechazado:", (error as { code?: string }).code ?? "sin código");
       return errorResponse(401, "INVALID_TOKEN", "Tu sesión no es válida. Iniciá sesión de nuevo.");
     }
 

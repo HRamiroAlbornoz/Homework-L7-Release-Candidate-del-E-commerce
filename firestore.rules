@@ -125,9 +125,16 @@ service cloud.firestore {
     match /users/{uid} {
       // Un usuario solo puede leer su propio perfil.
       //
-      // Nota: la Vercel Function del presign también lee este documento para
-      // verificar el rol, pero lo hace con el SDK de Admin, que tiene acceso
-      // total y NO pasa por estas reglas. Por eso no hace falta ampliarlas.
+      // ⚠ ESTA REGLA SOSTIENE LA SUBIDA DE IMÁGENES. No es solo para la app.
+      //
+      // La Vercel Function de api/uploads/presign.ts lee este documento para
+      // averiguar si quien pide subir una imagen es admin, y lo hace con el
+      // token DEL PROPIO USUARIO — no con credenciales de administrador. O sea
+      // que es esta regla la que autoriza esa lectura.
+      //
+      // Consecuencia práctica: si se restringe o se elimina, el panel de
+      // administración deja de poder subir imágenes, y el fallo aparece como un
+      // error del servidor sin relación aparente con las reglas.
       allow read: if request.auth != null && request.auth.uid == uid;
 
       // Alta del perfil: solo el propio usuario recién creado en Auth puede
