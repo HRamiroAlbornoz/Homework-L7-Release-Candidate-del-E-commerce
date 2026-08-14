@@ -13,15 +13,32 @@ npx vitest run <path>        # Corre un solo archivo de test, ej: npx vitest run
 npx vitest                    # Modo watch
 npx tsc -b --noEmit           # Solo type-check, sin build
 npm run seed                   # Carga productos de prueba en Firestore (scripts/seed.ts)
+npm run seed -- --force         # Los agrega aunque la colección ya tenga documentos
+
+firebase deploy --only firestore:rules,firestore:indexes   # Publica firestore.rules e índices
 ```
 
 No hay un test runner por nombre de test individual configurado aparte del filtro por archivo de Vitest; para acotar más, usar `npx vitest run <path> -t "<nombre del test>"`.
 
 Setup local: copiar `.env.example` a `.env` con las credenciales de un proyecto Firebase, y habilitar Email/Password en Firebase Console → Authentication → Sign-in method (paso manual, no hay código para esto). Las variables de entorno se validan al arrancar con Zod en `src/lib/envSchema.ts`.
 
+El `.env.example` documenta las dos familias de variables y **por qué** están separadas. Las de `api/` (`S3_*`) solo hacen falta para el flujo de subida de imágenes; la app arranca sin ellas.
+
 ## Arquitectura
 
-E-commerce React + TypeScript (strict) + Vite, con Firestore como base de datos y Firebase Authentication (SDK modular v9+, cliente) para email/password.
+E-commerce React + TypeScript (strict) + Vite, con Firestore como base de datos y Firebase Authentication (SDK modular v9+, cliente) para email/password. Desplegado en Vercel, con una Vercel Function para firmar subidas a S3.
+
+### `src/` y `api/` son dos mundos distintos
+
+Todo lo que está en `src/` termina dentro del bundle que descarga el navegador: **cualquier persona puede leerlo**. `api/` solo corre en el servidor de Vercel y es lo único que puede tocar secretos.
+
+Esa frontera es física, no una convención. Se sostiene con tres reglas:
+
+- Las variables con prefijo `VITE_` son **públicas por definición**: Vite las reemplaza literalmente por su valor al construir el bundle. Los secretos no llevan ese prefijo y solo se leen con `process.env` dentro de `api/`.
+- `api/` tiene su propio proyecto de TypeScript (`tsconfig.api.json`, referenciado desde `tsconfig.json`). Sin él, `tsc -b` ni miraría esa carpeta y los errores de tipos del código que maneja los secretos aparecerían recién en producción.
+- Lo que ambos mundos comparten vive en módulos **sin dependencias** (`src/constants/uploads.ts`), importables desde los dos lados sin arrastrar nada.
+
+`api/` corre como **ESM** (el `package.json` declara `"type": "module"`), así que sus imports relativos **necesitan la extensión `.js`** — la del archivo compilado. Vite completa extensiones y Node no; por eso este error solo se manifiesta en el despliegue.
 
 ### Capa de acceso a datos — nunca se salta
 
@@ -50,17 +67,62 @@ Estas dos capas son independientes a propósito: los guards son UX, las reglas s
 
 `src/lib/authFormSchemas.ts` valida signup/login con Zod antes de llamar a Firebase: límites de longitud en todos los campos (email 254, displayName 100, password 128) y, solo en signup, contraseña mínimo 8 caracteres con letra + número. El schema usa `.pipe()` (`z.string().min().max().pipe(z.email())`) para que un email vacío muestre "es obligatorio" antes que "no es válido" — si se usa `z.email()` como raíz del schema, esa precedencia de mensajes se rompe.
 
+### Carrito: reducer puro, provider con funciones nombradas
+
+`src/features/cart/` agrupa todo el carrito. Tres decisiones que sostienen el diseño:
+
+- **`cartReducer.ts` es una función pura**, separada del provider. No lee ni escribe nada de afuera, así que se testea sin DOM, sin providers y sin mocks.
+- **Un único helper (`withRecalculatedTotals`) recalcula los totales** al final de cada acción. Ninguna acción arma el estado a mano, así que es imposible actualizar los ítems y olvidarse de los totales. `cartStorage.ts` usa el mismo helper al leer de `localStorage`, de modo que un JSON manipulado a mano se corrige solo.
+- **`CartProvider` expone funciones nombradas** (`addItem`, `removeItem`…), nunca `dispatch` crudo. La API pública del feature es el hook `useCart`; el Context no debe importarse desde los componentes.
+
+Un ítem del carrito guarda una **foto** del producto (`productId`, `name`, `unitPrice`), no una referencia viva. En este proyecto `price` es opcional dentro de `Product`, así que el problema "producto sin precio" se resuelve una sola vez, en la puerta de entrada (`AddToCartButton`), en vez de contaminar cada cálculo.
+
+### Doble envío: el estado es lo que se ve, el ref es lo que decide
+
+`CheckoutPage` y `CreateProductForm` protegen el envío con un `useRef` **además** del botón deshabilitado. Deshabilitar depende de que React vuelva a renderizar, y eso ocurre después de que termina el manejador: dos clicks muy rápidos pueden dispararse ambos antes. Un ref se actualiza en el acto.
+
+El mismo patrón ya estaba en `ProductsContext` desde el Homework L4, por el mismo motivo.
+
+### Subida de imágenes: el servidor firma, nunca ve los bytes
+
+`api/uploads/presign.ts` devuelve una URL prefirmada de S3 y el navegador sube el archivo **directo al bucket**. La clave de AWS nunca sale del servidor.
+
+Verifica en tres pasos, en este orden: identidad (401), permiso (403) y datos (400). El token se valida con `jose` contra las claves públicas de Google —comprobando también emisor y audiencia— y el rol se lee por la **API REST de Firestore con el token del propio usuario**, así que quien autoriza es `firestore.rules` y no un SDK con acceso total.
+
+**No se usa `firebase-admin` acá**: depende de `jwks-rsa`, que es CommonJS y hace `require("jose")`; `jose` 6 es solo ESM y el runtime de Vercel no admite `require()` de ESM. `scripts/seed.ts` sí lo usa, porque corre en Node local.
+
+El nombre del archivo se genera con `randomUUID()` y la extensión sale del `contentType` ya validado, nunca del nombre que manda el cliente. `signableHeaders: ["content-type"]` hace que S3 rechace el `PUT` si el navegador declara un tipo distinto al firmado.
+
 ### Árbol de la app
 
-`main.tsx`: `BrowserRouter` → `AuthProvider` → `App`. `AuthProvider` envuelve todo *dentro* del router para que `useAuth()` esté disponible en cualquier ruta, incluido el `Header`. `App.tsx` define las rutas sobre `RootLayout` (Header + `<Outlet />` compartidos); `ProductsProvider` envuelve solo la ruta `/` porque el catálogo de productos no lo necesita el resto de la app.
+`main.tsx`: `BrowserRouter` → `AuthProvider` → `CartProvider` → `App`. `AuthProvider` envuelve todo *dentro* del router para que `useAuth()` esté disponible en cualquier ruta, incluido el `Header`. `CartProvider` va **debajo** de `AuthProvider`: la sesión es lo más transversal (hasta los guards dependen de ella) y el checkout necesita saber quién compra, mientras que la sesión nunca necesita el carrito.
+
+`App.tsx` define las rutas sobre `RootLayout` (Header + `<Outlet />` compartidos); `ProductsProvider` envuelve solo la ruta `/` porque el catálogo de productos no lo necesita el resto de la app.
+
+**`/cart` es pública a propósito**: un visitante arma su carrito antes de registrarse (vive en `localStorage`) y la sesión recién se exige al pagar. `/checkout` está bajo `ProtectedRoute` y `/admin` bajo `AdminRoute`.
 
 ### Estados de carga en fetch
 
 Todo componente que fetchea datos maneja `loading`/`error`/`success` explícitamente, reusando `src/components/states/` (`LoadingState`, `ErrorState`, `EmptyState`) en vez de reimplementarlos por pantalla.
 
+### Infraestructura de tests
+
+`src/test/` concentra lo compartido: `setup.ts` (matchers de jest-dom, limpieza del DOM y ciclo de vida de MSW), `fixtures.ts` y `renderWithProviders.tsx`.
+
+Dos reglas que no son obvias y que ya causaron problemas:
+
+- **El archivo de setup no debe importar código de la aplicación.** `setupFiles` corre antes que los tests, así que cualquier módulo que arrastre queda cargado e instanciado **antes** de que un test pueda mockearlo. Por eso `src/test/msw/handlers.ts` importa `PRESIGN_ENDPOINT` de `constants/` y no del service.
+- **`renderWithProviders` compone solo `MemoryRouter` + `CartProvider`.** No incluye `AuthProvider` (se suscribe a Firebase real al montar) ni `ProductsProvider` (importarlo arrastra `lib/env.ts`, que valida las variables de entorno al cargarse y reventaría en el CI). Los tests que necesitan sesión usan `vi.mock` sobre `useAuth`.
+
+MSW corre con `onUnhandledRequest: "error"`: cualquier request sin handler rompe el test en vez de salir a la red.
+
+**Lo que los tests NO cubren**: el interior de `api/`. MSW intercepta la request y devuelve una respuesta falsa, así que el código de la Vercel Function nunca se ejecuta. Los tests verifican el contrato entre el frontend y el endpoint; el endpoint solo se valida con un smoke test contra el despliegue.
+
 ## Documentación de decisiones ya escrita
 
 No repetir investigación ya resuelta — leer antes de tocar código relacionado:
+
+- [`production-checklist.md`](production-checklist.md): checklist de producción **ejecutado**, con la verificación de secretos en el bundle, los smoke tests contra producción, el plan de rollback y cuatro notas de debugging de problemas reales (imports ESM sin extensión, el conflicto `firebase-admin`/`jose`, un merge en verde con producción desactualizada, y un conflicto de git tras un squash merge).
 
 - [`docs/auth-notes.md`](docs/auth-notes.md): tabla de códigos de error de Firebase incluidos/descartados, el experimento de comentar el chequeo de `loading` en `ProtectedRoute`, code review de seguridad, preguntas de reflexión del enunciado, el caso borde de usuario autenticado sin perfil en Firestore, y un bug real de sesión ya diagnosticado y corregido (`createdAt` sin resolver justo después del signup — requiere `serverTimestamps: "estimate"` al leer con `snapshot.data()`).
 - [`docs/ai-notes.md`](docs/ai-notes.md): decisiones heredadas del Homework L4 sobre el catálogo (paginación, búsqueda por prefijo, por qué `getDocs` en vez de `onSnapshot`). **Advertencia**: `endAt()` en `productsService.ts` usa el carácter Unicode de fin de rango (rango de uso privado, sin glifo visible) — en cualquier editor o salida de terminal se ve como si el string terminara vacío, pero no lo está; verificar a nivel de bytes/`charCodeAt` antes de "corregirlo".
