@@ -77,6 +77,31 @@ Estas dos capas son independientes a propósito: los guards son UX, las reglas s
 
 Un ítem del carrito guarda una **foto** del producto (`productId`, `name`, `unitPrice`), no una referencia viva. En este proyecto `price` es opcional dentro de `Product`, así que el problema "producto sin precio" se resuelve una sola vez, en la puerta de entrada (`AddToCartButton`), en vez de contaminar cada cálculo.
 
+### Órdenes: los ítems son documentos, no un array
+
+Una orden se guarda en dos niveles:
+
+```
+orders/{orderId}                  → { userId, status, createdAt }
+orders/{orderId}/items/{itemId}   → { userId, productId, name, unitPrice, quantity }
+```
+
+**No es una decisión organizativa, es de seguridad.** Con los ítems dentro de un array, el precio de cada uno venía del navegador y nada lo contrastaba con el catálogo: editando `localStorage` se podía comprar a cualquier precio. Las reglas no pueden recorrer un array ni sumar, pero **sí pueden leer otros documentos con `get()`** — y al ser cada ítem un documento propio, cada uno tiene su propia evaluación de regla:
+
+```
+request.resource.data.unitPrice == precioDeCatalogo(request.resource.data.productId)
+```
+
+Tres consecuencias que hay que conocer antes de tocar esto:
+
+- **Los totales no se guardan.** Se calculan al leer, desde ítems ya verificados. Un total guardado sería un dato que las reglas no pueden comprobar — exactamente el agujero que había.
+- **El `userId` se repite en cada ítem.** En un `writeBatch` las reglas se evalúan contra el estado *anterior* al lote, así que un `get()` sobre la orden padre fallaría: todavía no existe.
+- **Un cambio de precio invalida los carritos en curso.** Es el costo aceptado de verificar. `mapOrderError` traduce el `permission-denied` a un mensaje que invita a revisar el carrito, porque esa es hoy la causa más probable.
+
+Al escribir se usa `writeBatch`: la orden y sus líneas entran juntas o no entra ninguna. Sin atomicidad, un rechazo a mitad de camino dejaría una orden sin ítems.
+
+**Para listar órdenes o ítems** hace falta incluir `where("userId", "==", uid)` en la consulta. Firestore **no filtra los resultados** según las reglas: evalúa la regla contra la consulta y la rechaza entera si no garantiza que todo lo devuelto cumple. Un listado sin ese filtro devuelve `403`.
+
 ### Doble envío: el estado es lo que se ve, el ref es lo que decide
 
 `CheckoutPage` y `CreateProductForm` protegen el envío con un `useRef` **además** del botón deshabilitado. Deshabilitar depende de que React vuelva a renderizar, y eso ocurre después de que termina el manejador: dos clicks muy rápidos pueden dispararse ambos antes. Un ref se actualiza en el acto.
