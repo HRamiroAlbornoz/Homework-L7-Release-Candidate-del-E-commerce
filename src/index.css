@@ -297,6 +297,22 @@ h1 {
   color: var(--text-h);
 }
 
+/* Cuando el producto NO tiene precio, la categoría es el último elemento antes
+   del mensaje "Precio no disponible", así que le toca a ella aportar el colchón
+   de 12px que en las demás tarjetas da el margin-bottom del precio.
+
+   No puede ir como margin-top del mensaje: ese margen usa "auto" para anclarlo
+   al fondo, y cuando la tarjeta es la más alta de su fila el "auto" se resuelve
+   en 0 y deja de separar. Tampoco sirve un padding-top en el mensaje: con
+   box-sizing: border-box, el min-height de 44px absorbe ese padding y el texto
+   solo se corre hacia adentro de la misma caja, sin separarla de nada.
+
+   :has() acota la regla a las tarjetas sin precio, para no alterar el espaciado
+   de las demás. */
+.product-card:has(.add-to-cart__unavailable) .product-card__category {
+  margin-bottom: 12px;
+}
+
 .product-card__category {
   margin: 0 0 8px;
   font-size: 12px;
