@@ -14,11 +14,18 @@
     "types": ["node"],
     "skipLibCheck": true,
 
-    /* Vercel empaqueta la función antes de ejecutarla (igual que Vite con el
-       frontend), así que se usa resolución de bundler: permite importar sin
-       escribir la extensión ".js" en cada import relativo. */
-    "module": "esnext",
-    "moduleResolution": "bundler",
+    /* "nodenext" y NO "bundler", aunque Vercel empaquete la función.
+
+       El motivo es concreto: este código corre como ESM real de Node, donde los
+       imports relativos EXIGEN la extensión del archivo. Con "bundler",
+       TypeScript acepta un import sin extensión, el lint lo acepta, el CI pasa
+       en verde... y la función explota en producción con ERR_MODULE_NOT_FOUND.
+
+       Eso ya pasó una vez en este proyecto (corregido a mano en el commit
+       776962a). Con "nodenext", tsc rechaza el import incompleto y el error se
+       detecta al escribirlo, no al desplegarlo. */
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
     "noEmit": true,
