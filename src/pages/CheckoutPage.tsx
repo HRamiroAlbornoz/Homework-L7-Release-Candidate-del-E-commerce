@@ -3,11 +3,17 @@ import { Link } from "react-router";
 import { EmptyState } from "../components/states/EmptyState";
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../features/cart/useCart";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { formatPrice } from "../lib/formatPrice";
 import { mapOrderError, type OrderError } from "../lib/orderErrors";
 import { createOrderFromCart } from "../services/ordersService";
 
 export function CheckoutPage() {
+  // Un solo título para las tres pantallas de esta página (compra pendiente,
+  // confirmación y carrito vacío): todas son "el checkout" para quien mira la
+  // pestaña o el historial.
+  useDocumentTitle("Checkout");
+
   const { user } = useAuth();
   const { items, totalItems, totalPrice, clearCart } = useCart();
 
@@ -115,14 +121,32 @@ export function CheckoutPage() {
         </p>
       )}
 
-      <button
-        type="button"
-        className="checkout__submit"
-        onClick={handleConfirmPurchase}
-        disabled={isSubmitting}
-      >
-        {isSubmitting ? "Confirmando compra..." : "Confirmar compra"}
-      </button>
+      {/*
+        Las dos acciones van juntas y en este orden: primero la principal
+        (confirmar), después la de escape (volver al carrito). Es el orden en
+        que las lee un lector de pantalla y el orden en que las recorre el
+        teclado con Tab, así que la acción que la mayoría busca aparece
+        primero.
+
+        El enlace al carrito no es decorativo: si la compra falla porque cambió
+        un precio, el mensaje de error dice literalmente "volvé al carrito", y
+        hasta ahora no había ningún enlace que lo hiciera — el único camino era
+        el menú de arriba. Un mensaje que pide una acción tiene que ofrecerla.
+      */}
+      <div className="checkout__actions">
+        <button
+          type="button"
+          className="checkout__submit"
+          onClick={handleConfirmPurchase}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "Confirmando compra..." : "Confirmar compra"}
+        </button>
+
+        <Link to="/cart" className="checkout__back-link">
+          Volver al carrito
+        </Link>
+      </div>
     </div>
   );
 }

@@ -173,6 +173,11 @@ export function CreateProductForm() {
         onChange={setPrice}
         error={fieldErrors.price}
         disabled={isSubmitting}
+        // step="0.01": las flechitas del input avanzan de a un centavo y el
+        // navegador marca en rojo un valor con más decimales. Es una pista
+        // visual que llega ANTES de enviar; quien escribe el precio a mano se
+        // la saltea, y para eso está la regla del schema.
+        step="0.01"
       />
 
       <div className="form-field">
