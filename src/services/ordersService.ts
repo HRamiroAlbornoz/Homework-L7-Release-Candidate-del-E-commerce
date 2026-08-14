@@ -3,6 +3,7 @@ import type { CartState } from "@/features/cart/types";
 import { db } from "@/lib/firebase";
 import { ORDER_ERROR_CODES } from "@/lib/orderErrorCodes";
 import { mapOrderError, OrderError } from "@/lib/orderErrors";
+import { orderWriteSchema } from "@/types/order";
 
 // Nombre de la colección en una constante: se usa acá y en firestore.rules, y
 // tenerlo escrito a mano en varios lugares es la forma más fácil de que un día
@@ -36,7 +37,15 @@ export async function createOrderFromCart(userId: string, cart: CartState): Prom
   }
 
   try {
-    const orderRef = await addDoc(collection(db, ORDERS_COLLECTION), {
+    // El documento se valida contra el schema ANTES de escribirlo. No es
+    // ceremonia: sin este paso, orderWriteSchema quedaría de adorno y el código
+    // que escribe podría alejarse de él sin que nadie se entere, hasta que algo
+    // falle al leer las órdenes mucho después.
+    //
+    // Además corta acá cualquier estado inconsistente que hubiera llegado desde
+    // el carrito (totales negativos, cantidades no enteras), en vez de dejar que
+    // lo rechacen las reglas de Firestore con un error de permisos genérico.
+    const orderPayload = orderWriteSchema.parse({
       userId,
       items: cart.items,
       totalItems: cart.totalItems,
@@ -45,6 +54,10 @@ export async function createOrderFromCart(userId: string, cart: CartState): Prom
       // así no existe ningún camino por el que alguien pueda crear una orden ya
       // marcada como pagada sin haber pagado.
       status: "created",
+    });
+
+    const orderRef = await addDoc(collection(db, ORDERS_COLLECTION), {
+      ...orderPayload,
       // serverTimestamp() lo resuelve el SERVIDOR de Firestore, no el navegador.
       // Con new Date() la fecha saldría del reloj del usuario, que puede estar
       // mal configurado o manipulado, y el orden cronológico de las órdenes

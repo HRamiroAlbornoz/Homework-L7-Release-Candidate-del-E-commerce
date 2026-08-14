@@ -82,7 +82,19 @@ export async function uploadProductImage(file: File): Promise<string> {
     );
   }
 
-  const presign = presignResponseSchema.parse(await presignResponse.json());
+  // safeParse y no parse: si la respuesta no tiene la forma esperada, el
+  // ZodError que lanzaría parse trae como mensaje un volcado en JSON de la lista
+  // de problemas — texto para un desarrollador, que acá terminaría dentro del
+  // cartel de error que ve el usuario.
+  const parsedPresign = presignResponseSchema.safeParse(await presignResponse.json());
+
+  if (!parsedPresign.success) {
+    // El detalle técnico va al registro, donde sirve para diagnosticar.
+    console.error("[uploadsService] La respuesta del presign no tiene la forma esperada", parsedPresign.error);
+    throw new Error("No pudimos preparar la subida de la imagen. Intentá de nuevo.");
+  }
+
+  const presign = parsedPresign.data;
 
   // --- Paso 2: subir el archivo a S3 ---
   const uploadResponse = await fetch(presign.uploadUrl, {

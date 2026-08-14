@@ -266,3 +266,61 @@ describe("CreateProductForm — validaciones antes de salir a la red", () => {
     expect(requestLog).toEqual([]);
   });
 });
+
+describe("CreateProductForm — el usuario nunca ve un error técnico", () => {
+  it("si el servidor devuelve una respuesta con forma inesperada, muestra un mensaje entendible", async () => {
+    const user = userEvent.setup();
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    // Un 200 con un cuerpo que no cumple el schema. Antes, el ZodError llegaba
+    // a la pantalla con su mensaje: un volcado en JSON de la lista de problemas.
+    server.use(
+      http.post(PRESIGN_ENDPOINT, () => HttpResponse.json({ algo: "inesperado" })),
+    );
+
+    renderWithProviders(<CreateProductForm />);
+    await fillValidForm(user);
+    await user.click(getSubmitButton());
+
+    const alerta = await screen.findByRole("alert");
+    expect(alerta).toHaveTextContent(/no pudimos preparar la subida de la imagen/i);
+    // Ni rastro del volcado técnico de Zod.
+    expect(alerta).not.toHaveTextContent(/invalid_type|expected|received/i);
+    // El detalle sí queda registrado, que es donde sirve.
+    expect(consoleError).toHaveBeenCalled();
+    expect(createProduct).not.toHaveBeenCalled();
+  });
+});
+
+describe("CreateProductForm — la confirmación no sobrevive a un intento fallido", () => {
+  it("al reenviar, borra el mensaje de éxito anterior antes de mostrar el error nuevo", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    renderWithProviders(<CreateProductForm />);
+
+    // Primer alta: exitosa.
+    await fillValidForm(user);
+    await user.click(getSubmitButton());
+    await screen.findByText(/se creó correctamente/i);
+
+    // Segundo intento: el servidor lo rechaza.
+    server.use(
+      http.post(PRESIGN_ENDPOINT, () =>
+        HttpResponse.json(
+          { code: "FORBIDDEN", message: "No tenés permisos para subir imágenes." },
+          { status: 403 },
+        ),
+      ),
+    );
+
+    await fillValidForm(user);
+    await user.click(getSubmitButton());
+    await screen.findByRole("alert");
+
+    // Sin la corrección, acá convivían en pantalla el "se creó correctamente"
+    // del producto anterior y el cartel de error del nuevo: dos mensajes que se
+    // contradicen y dejan al usuario sin saber qué pasó.
+    expect(screen.queryByText(/se creó correctamente/i)).not.toBeInTheDocument();
+  });
+});

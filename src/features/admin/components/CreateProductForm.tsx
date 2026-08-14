@@ -54,6 +54,10 @@ export function CreateProductForm() {
     }
 
     setFormError(null);
+    // También se limpia la confirmación anterior. Sin esto, si el segundo alta
+    // falla, el usuario ve al mismo tiempo el bloque de éxito del producto
+    // anterior y el cartel de error del nuevo — dos mensajes que se contradicen.
+    setCreatedProduct(null);
 
     // --- Validación en el navegador ---
     // Es de conveniencia: le ahorra al usuario un viaje al servidor para que le

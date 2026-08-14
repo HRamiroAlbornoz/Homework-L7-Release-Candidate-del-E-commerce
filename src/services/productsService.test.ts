@@ -16,11 +16,13 @@ vi.mock("firebase/firestore", () => ({
   startAfter: vi.fn((cursor: unknown) => ({ type: "startAfter", cursor })),
   limit: vi.fn((n: number) => ({ type: "limit", n })),
   getDocs: vi.fn(),
+  addDoc: vi.fn(),
 }));
 
-import { collection, query, getDocs } from "firebase/firestore";
+import { collection, query, getDocs, addDoc } from "firebase/firestore";
+import { FirebaseError } from "firebase/app";
 import { db } from "../lib/firebase";
-import { listProducts } from "./productsService";
+import { listProducts, createProduct } from "./productsService";
 import type { Product } from "../types/product";
 import { MIN_SEARCH_CHARS } from "../constants/search";
 
@@ -224,5 +226,63 @@ describe("productsService.listProducts", () => {
     (getDocs as Mock).mockRejectedValueOnce("fallo desconocido");
 
     await expect(listProducts({ pageSize: 20 })).rejects.toThrow("Error desconocido al consultar productos");
+  });
+});
+
+describe("createProduct", () => {
+  const productoValido = {
+    name: "Nike Air Max 90",
+    categoryId: "calzado",
+    price: 75410,
+    imageUrl: "https://bucket.s3.us-east-1.amazonaws.com/products/abc.png",
+  };
+
+  beforeEach(() => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  it("deriva nameLower del nombre, en minúsculas", async () => {
+    (addDoc as Mock).mockResolvedValue({ id: "producto-1" });
+
+    await createProduct(productoValido);
+
+    const [, documento] = (addDoc as Mock).mock.calls[0] as [unknown, Record<string, unknown>];
+    // nameLower no se recibe como parámetro: lo deriva el service. Si viniera
+    // del formulario, un descuido con las mayúsculas dejaría el producto
+    // invisible en las búsquedas por prefijo.
+    expect(documento.nameLower).toBe("nike air max 90");
+    expect(documento.name).toBe("Nike Air Max 90");
+  });
+
+  it("devuelve el id del documento creado", async () => {
+    (addDoc as Mock).mockResolvedValue({ id: "producto-1" });
+
+    await expect(createProduct(productoValido)).resolves.toBe("producto-1");
+  });
+
+  it("ante un permiso denegado, avisa en español y NO expone el error del SDK", async () => {
+    (addDoc as Mock).mockRejectedValue(
+      new FirebaseError("permission-denied", "Missing or insufficient permissions."),
+    );
+
+    await expect(createProduct(productoValido)).rejects.toThrow(/no tenés permisos/i);
+    // El mensaje del SDK está en inglés y no le dice a nadie qué hacer.
+    await expect(createProduct(productoValido)).rejects.not.toThrow(/insufficient permissions/i);
+  });
+
+  it("ante cualquier otro fallo, devuelve un mensaje genérico entendible", async () => {
+    (addDoc as Mock).mockRejectedValue(new FirebaseError("unavailable", "Backend unavailable"));
+
+    await expect(createProduct(productoValido)).rejects.toThrow(/no pudimos crear el producto/i);
+  });
+
+  it("conserva el error original en 'cause' y lo registra, para poder diagnosticarlo", async () => {
+    const errorOriginal = new FirebaseError("unavailable", "Backend unavailable");
+    (addDoc as Mock).mockRejectedValue(errorOriginal);
+
+    // El detalle técnico no se pierde: no llega a la pantalla, pero queda
+    // disponible para quien tenga que investigar.
+    await expect(createProduct(productoValido)).rejects.toMatchObject({ cause: errorOriginal });
+    expect(console.error).toHaveBeenCalled();
   });
 });

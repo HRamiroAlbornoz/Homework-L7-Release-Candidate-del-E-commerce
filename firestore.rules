@@ -96,6 +96,14 @@ service cloud.firestore {
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
 
       allow create: if isSignedIn()
+                    // hasOnly rechaza cualquier campo que no esté en la lista.
+                    // Sin esto, alguien podía llamar a addDoc() desde la consola
+                    // del navegador e inyectar campos que la app no espera (un
+                    // "paid: true", o un blob de un megabyte para hacer crecer
+                    // la base).
+                    && request.resource.data.keys().hasOnly([
+                         'userId', 'items', 'totalItems', 'totalPrice', 'status', 'createdAt'
+                       ])
                     // Nadie puede crear una orden a nombre de otro usuario.
                     && request.resource.data.userId == request.auth.uid
                     // El estado inicial siempre es 'created': así nadie puede
@@ -107,10 +115,34 @@ service cloud.firestore {
                     && request.resource.data.createdAt == request.time
                     && request.resource.data.items is list
                     && request.resource.data.items.size() > 0
+                    // Tope de líneas por orden: acota el tamaño del documento.
+                    && request.resource.data.items.size() <= 50
                     && request.resource.data.totalItems is int
                     && request.resource.data.totalItems > 0
                     && request.resource.data.totalPrice is number
-                    && request.resource.data.totalPrice >= 0;
+                    // > 0 y no >= 0: una orden por $0 no tiene sentido de
+                    // negocio, y era lo que permitía registrar una compra
+                    // gratis manipulando el localStorage.
+                    && request.resource.data.totalPrice > 0;
+
+      // ⚠ LIMITACIÓN CONOCIDA: estas reglas NO pueden verificar que totalPrice
+      // coincida con la suma de los ítems, ni que el precio de cada ítem sea el
+      // que figura en el catálogo. El lenguaje de reglas no permite recorrer un
+      // array ni sumar sus elementos.
+      //
+      // Consecuencia real: un usuario que edite su localStorage puede registrar
+      // una orden con precios más bajos que los reales. Las validaciones de
+      // arriba acotan el daño (no puede ser $0, ni inyectar campos, ni inflar el
+      // documento), pero no lo eliminan.
+      //
+      // La solución completa es calcular el total EN EL SERVIDOR: una Vercel
+      // Function que reciba solo los ids y las cantidades, lea los precios del
+      // catálogo, arme la orden y la escriba con el SDK de Admin. Ahí esta regla
+      // pasaría a ser "allow create: if false", porque el cliente ya no
+      // escribiría órdenes nunca.
+      //
+      // Queda fuera del alcance de este release candidate, documentado en
+      // production-checklist.md.
 
       // Una orden es un registro histórico: no se edita ni se borra. Un cambio
       // de estado (a 'paid' o 'cancelled') lo haría un proceso del servidor con

@@ -41,6 +41,20 @@ export const orderDocSchema = z.object({
 
 export type OrderDoc = z.infer<typeof orderDocSchema>;
 
+// Lo que el cliente realmente ESCRIBE, que es el documento menos "createdAt".
+//
+// createdAt se omite porque en el momento de escribir no es un Timestamp
+// todavía: es el sentinel que devuelve serverTimestamp(), y el servidor lo
+// resuelve al confirmar la escritura. Validarlo contra orderDocSchema fallaría
+// siempre. Mismo criterio que en usersService.ts.
+//
+// Existe para que ordersService valide el documento ANTES de mandarlo. Sin eso,
+// el schema y el código que escribe pueden desincronizarse en silencio: el
+// schema queda de adorno y nadie se entera hasta que algo se rompe al leer.
+export const orderWriteSchema = orderDocSchema.omit({ createdAt: true });
+
+export type OrderWrite = z.infer<typeof orderWriteSchema>;
+
 // Forma completa que usa la app, con el id del documento ya incorporado.
 export const orderSchema = orderDocSchema.extend({ id: z.string() });
 

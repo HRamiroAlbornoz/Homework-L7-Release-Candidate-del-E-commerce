@@ -14,6 +14,7 @@ import {
   type DocumentData,
   type FirestoreDataConverter,
 } from "firebase/firestore";
+import { FirebaseError } from "firebase/app";
 import { db } from "../lib/firebase";
 import { MIN_SEARCH_CHARS } from "../constants/search";
 import { productDocSchema, type Product, type ProductDoc, type ProductQueryParams } from "../types/product";
@@ -122,6 +123,23 @@ export async function createProduct(input: CreateProductInput): Promise<string> 
 
     return productRef.id;
   } catch (error) {
-    throw error instanceof Error ? error : new Error("Error desconocido al crear el producto");
+    // El error del SDK NUNCA se relanza tal cual: sus mensajes están en inglés,
+    // son técnicos, y llegan directo a la pantalla del admin. Un
+    // "FirebaseError: Missing or insufficient permissions." no le dice a nadie
+    // qué hacer.
+    //
+    // El error original queda en "cause" y en el registro, que es donde sirve.
+    console.error("[createProduct] Error al crear el producto", error);
+
+    if (error instanceof FirebaseError && error.code === "permission-denied") {
+      throw new Error(
+        "No tenés permisos para crear productos. Verificá que tu cuenta sea de administrador.",
+        { cause: error },
+      );
+    }
+
+    throw new Error("No pudimos crear el producto. Intentá de nuevo en unos minutos.", {
+      cause: error,
+    });
   }
 }
