@@ -95,15 +95,21 @@ service cloud.firestore {
       // que se intenta escribir).
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
 
+      // El documento de la orden guarda MUY POCO a propósito: quién compró, en
+      // qué estado está y cuándo. Ni los ítems ni los totales.
+      //
+      // Los totales no están porque estas reglas no podrían verificarlos: el
+      // lenguaje no permite recorrer un array ni sumar sus elementos. Un total
+      // guardado sería un número venido del navegador que nadie contrasta contra
+      // nada — y era exactamente lo que permitía comprar a cualquier precio
+      // editando el localStorage. Se calculan al leer, a partir de los ítems de
+      // la subcolección, que sí se verifican uno por uno (ver más abajo).
       allow create: if isSignedIn()
                     // hasOnly rechaza cualquier campo que no esté en la lista.
-                    // Sin esto, alguien podía llamar a addDoc() desde la consola
+                    // Sin esto, alguien podría llamar al SDK desde la consola
                     // del navegador e inyectar campos que la app no espera (un
-                    // "paid: true", o un blob de un megabyte para hacer crecer
-                    // la base).
-                    && request.resource.data.keys().hasOnly([
-                         'userId', 'items', 'totalItems', 'totalPrice', 'status', 'createdAt'
-                       ])
+                    // "paid: true", o un blob de un megabyte).
+                    && request.resource.data.keys().hasOnly(['userId', 'status', 'createdAt'])
                     // Nadie puede crear una orden a nombre de otro usuario.
                     && request.resource.data.userId == request.auth.uid
                     // El estado inicial siempre es 'created': así nadie puede
@@ -112,42 +118,75 @@ service cloud.firestore {
                     // Patrón oficial de Firebase para confirmar que el campo se
                     // escribió con serverTimestamp() real, y no con una fecha
                     // armada a mano del lado del cliente.
-                    && request.resource.data.createdAt == request.time
-                    && request.resource.data.items is list
-                    && request.resource.data.items.size() > 0
-                    // Tope de líneas por orden: acota el tamaño del documento.
-                    && request.resource.data.items.size() <= 50
-                    && request.resource.data.totalItems is int
-                    && request.resource.data.totalItems > 0
-                    && request.resource.data.totalPrice is number
-                    // > 0 y no >= 0: una orden por $0 no tiene sentido de
-                    // negocio, y era lo que permitía registrar una compra
-                    // gratis manipulando el localStorage.
-                    && request.resource.data.totalPrice > 0;
-
-      // ⚠ LIMITACIÓN CONOCIDA: estas reglas NO pueden verificar que totalPrice
-      // coincida con la suma de los ítems, ni que el precio de cada ítem sea el
-      // que figura en el catálogo. El lenguaje de reglas no permite recorrer un
-      // array ni sumar sus elementos.
-      //
-      // Consecuencia real: un usuario que edite su localStorage puede registrar
-      // una orden con precios más bajos que los reales. Las validaciones de
-      // arriba acotan el daño (no puede ser $0, ni inyectar campos, ni inflar el
-      // documento), pero no lo eliminan.
-      //
-      // La solución completa es calcular el total EN EL SERVIDOR: una Vercel
-      // Function que reciba solo los ids y las cantidades, lea los precios del
-      // catálogo, arme la orden y la escriba con el SDK de Admin. Ahí esta regla
-      // pasaría a ser "allow create: if false", porque el cliente ya no
-      // escribiría órdenes nunca.
-      //
-      // Queda fuera del alcance de este release candidate, documentado en
-      // production-checklist.md.
+                    && request.resource.data.createdAt == request.time;
 
       // Una orden es un registro histórico: no se edita ni se borra. Un cambio
       // de estado (a 'paid' o 'cancelled') lo haría un proceso del servidor con
       // el SDK de Admin, que no pasa por estas reglas.
       allow update, delete: if false;
+
+      // ---------------------------------------------------------------------
+      // Líneas de la orden
+      // ---------------------------------------------------------------------
+      //
+      // ACÁ ESTÁ LA VERIFICACIÓN DEL PRECIO, y es el motivo de que los ítems
+      // sean documentos separados en vez de un array dentro de la orden.
+      //
+      // Estas reglas no pueden recorrer un array, pero sí pueden leer otros
+      // documentos con get(). Al ser cada ítem un documento propio, cada uno
+      // tiene su propia evaluación de regla — y ahí sí se puede comparar su
+      // precio contra el del producto en el catálogo.
+      match /items/{itemId} {
+        allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+        allow create: if isSignedIn()
+                      // El userId viaja dentro del propio ítem en vez de leerse
+                      // de la orden padre con get(). El motivo: la orden y sus
+                      // ítems se escriben en un mismo writeBatch, y las reglas
+                      // de un lote se evalúan contra el estado ANTERIOR. En ese
+                      // momento la orden todavía no existe, así que un get()
+                      // sobre ella fallaría siempre.
+                      && request.resource.data.userId == request.auth.uid
+                      && request.resource.data.keys().hasOnly([
+                           'userId', 'productId', 'name', 'unitPrice', 'quantity'
+                         ])
+                      && request.resource.data.productId is string
+                      && request.resource.data.name is string
+                      && request.resource.data.name.size() > 0
+                      && request.resource.data.name.size() <= 120
+                      && request.resource.data.quantity is int
+                      && request.resource.data.quantity > 0
+                      // Mismo tope que MAX_QUANTITY_PER_ITEM en
+                      // src/features/cart/cartConstants.ts. Está duplicado a
+                      // propósito: las reglas no pueden importar código de la
+                      // app, y este es el único lugar donde el límite se aplica
+                      // de verdad.
+                      && request.resource.data.quantity <= 99
+                      // LA LÍNEA QUE CIERRA EL AGUJERO: el precio guardado tiene
+                      // que ser EXACTAMENTE el que figura hoy en el catálogo.
+                      //
+                      // Si el producto no existe, get() falla y la regla deniega.
+                      // Si alguien editó el precio en su localStorage, la
+                      // comparación no da y la escritura se rechaza.
+                      //
+                      // Efecto secundario aceptado: si un admin cambia el precio
+                      // de un producto, los carritos que ya lo tenían dejan de
+                      // poder confirmarse. El checkout lo contempla con un
+                      // mensaje que invita a revisar el carrito.
+                      //
+                      // Costo: una lectura facturable por ítem, que se cobra
+                      // aunque la regla termine rechazando la escritura.
+                      && request.resource.data.unitPrice == precioDeCatalogo(request.resource.data.productId);
+
+        // Igual que la orden: las líneas de una compra no se editan ni se borran.
+        allow update, delete: if false;
+      }
+    }
+
+    // Precio actual de un producto del catálogo. Si el documento no existe,
+    // get() falla y la regla que la invoca deniega la operación.
+    function precioDeCatalogo(productId) {
+      return get(/databases/$(database)/documents/products/$(productId)).data.price;
     }
 
     // -----------------------------------------------------------------------
