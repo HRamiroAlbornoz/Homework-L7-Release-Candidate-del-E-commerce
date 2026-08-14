@@ -211,12 +211,46 @@ async function readUserRole(uid: string, idToken: string, projectId: string): Pr
 // Respuestas de error
 // ---------------------------------------------------------------------------
 
-// Formato consistente { code, message }: el "code" es el contrato estable que
-// puede leer el frontend, el "message" es el texto humano. Nunca se incluye el
-// error original — sus mensajes pueden revelar nombres de buckets, rutas
-// internas o detalles de las reglas de seguridad.
-function errorResponse(status: number, code: string, message: string): Response {
-  return Response.json({ code, message }, { status });
+// Formato consistente { code, message, details? }: el "code" es el contrato
+// estable que puede leer el frontend, el "message" es el texto humano. Nunca se
+// incluye el error original — sus mensajes pueden revelar nombres de buckets,
+// rutas internas o detalles de las reglas de seguridad.
+function errorResponse(
+  status: number,
+  code: string,
+  message: string,
+  details?: Record<string, string>,
+): Response {
+  return Response.json(details ? { code, message, details } : { code, message }, { status });
+}
+
+// Los distintos motivos por los que una subida se rechaza por datos inválidos.
+//
+// Van como "details.kind" y NO como códigos de error separados. La diferencia
+// importa: el "code" es el contrato que consume el frontend para decidir qué
+// hacer, y ahí conviene tener pocas clases generales — quien recibe un
+// INVALID_UPLOAD siempre reacciona igual (mostrar el mensaje, no reintentar).
+// El "kind" es para quien diagnostica: distingue "el formato está mal" de "pesa
+// demasiado" sin obligar al cliente a conocer una lista de códigos que crece.
+//
+// El síntoma que arregla esto: los cinco motivos devolvían exactamente el mismo
+// mensaje y el mismo código, así que un reporte de "no me deja subir la imagen"
+// no se podía diagnosticar ni con la respuesta ni con los registros.
+type InvalidUploadKind = "CONTENT_TYPE" | "SIZE" | "MALFORMED_BODY";
+
+const MAX_IMAGE_SIZE_MB = MAX_IMAGE_SIZE_BYTES / (1024 * 1024);
+
+// El texto sale del mismo valor que usa la validación: si mañana cambia el
+// límite, el mensaje cambia solo. Un mensaje que anuncia un límite distinto del
+// que se aplica es peor que no tener mensaje.
+const INVALID_UPLOAD_MESSAGES: Record<InvalidUploadKind, string> = {
+  CONTENT_TYPE: "La imagen debe ser JPG, PNG o WebP.",
+  SIZE: `La imagen no puede pesar más de ${MAX_IMAGE_SIZE_MB} MB.`,
+  MALFORMED_BODY: "No pudimos leer los datos de la imagen. Actualizá la página e intentá de nuevo.",
+};
+
+function invalidUploadResponse(kind: InvalidUploadKind): Response {
+  return errorResponse(400, "INVALID_UPLOAD", INVALID_UPLOAD_MESSAGES[kind], { kind });
 }
 
 // ---------------------------------------------------------------------------
@@ -231,6 +265,35 @@ const presignRequestSchema = z.object({
   contentType: z.enum(ALLOWED_IMAGE_TYPES),
   size: z.number().int().positive().max(MAX_IMAGE_SIZE_BYTES),
 });
+
+// El tipo se deriva del propio schema en vez de nombrar un tipo de Zod a mano:
+// así no hay nada que actualizar si el schema cambia.
+type PresignIssues = z.ZodError<z.infer<typeof presignRequestSchema>>["issues"];
+
+/**
+ * Traduce los problemas que encontró Zod al motivo concreto del rechazo.
+ *
+ * Si fallan LOS DOS campos, el cuerpo no tiene la forma esperada en absoluto
+ * (un body vacío, o el de otra versión del cliente): eso es MALFORMED_BODY y no
+ * "el formato de imagen está mal", que apuntaría al lugar equivocado a quien
+ * esté diagnosticando.
+ */
+function kindFromIssues(issues: PresignIssues): InvalidUploadKind {
+  const camposConError = new Set(issues.map((issue) => issue.path[0]));
+
+  if (camposConError.has("contentType") && camposConError.has("size")) {
+    return "MALFORMED_BODY";
+  }
+  if (camposConError.has("contentType")) {
+    return "CONTENT_TYPE";
+  }
+  if (camposConError.has("size")) {
+    return "SIZE";
+  }
+
+  // Ningún campo conocido falló: el cuerpo no era ni siquiera un objeto.
+  return "MALFORMED_BODY";
+}
 
 // ---------------------------------------------------------------------------
 // Handler
@@ -298,14 +361,20 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     // --- 3. Datos: ¿lo que mandás tiene sentido? ---------------------------
-    const rawBody: unknown = await request.json();
+    // request.json() lanza si el cuerpo no es JSON válido. Antes esa excepción
+    // caía en el catch general y se respondía 500: un error del cliente
+    // reportado como falla del servidor, que además ensucia los registros con
+    // incidentes que no lo son.
+    let rawBody: unknown;
+    try {
+      rawBody = await request.json();
+    } catch {
+      return invalidUploadResponse("MALFORMED_BODY");
+    }
+
     const parsedBody = presignRequestSchema.safeParse(rawBody);
     if (!parsedBody.success) {
-      return errorResponse(
-        400,
-        "INVALID_UPLOAD",
-        "La imagen debe ser JPG, PNG o WebP y pesar menos de 5 MB.",
-      );
+      return invalidUploadResponse(kindFromIssues(parsedBody.error.issues));
     }
 
     const { contentType, size } = parsedBody.data;
