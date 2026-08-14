@@ -126,6 +126,16 @@ El nombre del archivo se genera con `randomUUID()` y la extensión sale del `con
 
 **`/cart` es pública a propósito**: un visitante arma su carrito antes de registrarse (vive en `localStorage`) y la sesión recién se exige al pagar. `/checkout` está bajo `ProtectedRoute` y `/admin` bajo `AdminRoute`.
 
+### El título de la pestaña lo pone cada página
+
+Esta es una SPA: el navegador carga `index.html` **una sola vez** y React reemplaza el contenido sin recargar, así que el `<title>` del HTML nunca cambia por su cuenta. Una pantalla nueva que no llame a `useDocumentTitle("...")` **hereda el título de la anterior** — y nada avisa, porque no es un error, es simplemente el valor viejo.
+
+La llamada va **arriba de todo en el componente, antes de cualquier `return` temprano**. `CartPage`, `LoginPage` y `SignupPage` tienen salidas anticipadas y son donde la regla de hooks es fácil de violar sin darse cuenta.
+
+El hook agrega ` | E-commerce Henry` al final. Ese orden es deliberado: la pestaña se angosta cuando se abren varias y lo primero que se corta es el final del texto, así que lo específico va primero.
+
+Va como hook y no como una tabla de rutas → títulos en `RootLayout` para que no exista un segundo lugar que actualizar al sumar una ruta. Un título que dependa de datos (el nombre de un producto) se resuelve igual, con la variable que la página ya tiene.
+
 ### Estados de carga en fetch
 
 Todo componente que fetchea datos maneja `loading`/`error`/`success` explícitamente, reusando `src/components/states/` (`LoadingState`, `ErrorState`, `EmptyState`) en vez de reimplementarlos por pantalla.
@@ -147,7 +157,7 @@ MSW corre con `onUnhandledRequest: "error"`: cualquier request sin handler rompe
 
 No repetir investigación ya resuelta — leer antes de tocar código relacionado:
 
-- [`production-checklist.md`](production-checklist.md): checklist de producción **ejecutado**, con la verificación de secretos en el bundle, los smoke tests contra producción, el plan de rollback y cuatro notas de debugging de problemas reales (imports ESM sin extensión, el conflicto `firebase-admin`/`jose`, un merge en verde con producción desactualizada, y un conflicto de git tras un squash merge).
+- [`production-checklist.md`](production-checklist.md): checklist de producción **ejecutado**, con la verificación de secretos en el bundle, los smoke tests contra producción, la sección "Verificación de todos los flujos" (la ronda completa manejando la app, con los casos que se rompieron a propósito), el plan de rollback y **diez notas de debugging** de problemas reales. Las que más ahorran tiempo: imports ESM sin extensión, el conflicto `firebase-admin`/`jose`, un merge en verde con producción desactualizada, que las reglas **rechazan** las consultas en vez de filtrarlas, y una medición correcta que contestaba la pregunta equivocada.
 
 - [`docs/auth-notes.md`](docs/auth-notes.md): tabla de códigos de error de Firebase incluidos/descartados, el experimento de comentar el chequeo de `loading` en `ProtectedRoute`, code review de seguridad, preguntas de reflexión del enunciado, el caso borde de usuario autenticado sin perfil en Firestore, y un bug real de sesión ya diagnosticado y corregido (`createdAt` sin resolver justo después del signup — requiere `serverTimestamps: "estimate"` al leer con `snapshot.data()`).
 - [`docs/ai-notes.md`](docs/ai-notes.md): decisiones heredadas del Homework L4 sobre el catálogo (paginación, búsqueda por prefijo, por qué `getDocs` en vez de `onSnapshot`). **Advertencia**: `endAt()` en `productsService.ts` usa el carácter Unicode de fin de rango (rango de uso privado, sin glifo visible) — en cualquier editor o salida de terminal se ve como si el string terminara vacío, pero no lo está; verificar a nivel de bytes/`charCodeAt` antes de "corregirlo".
