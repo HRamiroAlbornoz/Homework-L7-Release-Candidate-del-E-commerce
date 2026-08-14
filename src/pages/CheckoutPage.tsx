@@ -115,14 +115,32 @@ export function CheckoutPage() {
         </p>
       )}
 
-      <button
-        type="button"
-        className="checkout__submit"
-        onClick={handleConfirmPurchase}
-        disabled={isSubmitting}
-      >
-        {isSubmitting ? "Confirmando compra..." : "Confirmar compra"}
-      </button>
+      {/*
+        Las dos acciones van juntas y en este orden: primero la principal
+        (confirmar), después la de escape (volver al carrito). Es el orden en
+        que las lee un lector de pantalla y el orden en que las recorre el
+        teclado con Tab, así que la acción que la mayoría busca aparece
+        primero.
+
+        El enlace al carrito no es decorativo: si la compra falla porque cambió
+        un precio, el mensaje de error dice literalmente "volvé al carrito", y
+        hasta ahora no había ningún enlace que lo hiciera — el único camino era
+        el menú de arriba. Un mensaje que pide una acción tiene que ofrecerla.
+      */}
+      <div className="checkout__actions">
+        <button
+          type="button"
+          className="checkout__submit"
+          onClick={handleConfirmPurchase}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "Confirmando compra..." : "Confirmar compra"}
+        </button>
+
+        <Link to="/cart" className="checkout__back-link">
+          Volver al carrito
+        </Link>
+      </div>
     </div>
   );
 }
