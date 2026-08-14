@@ -13,12 +13,17 @@ interface FormFieldProps {
   error?: string | undefined;
   disabled?: boolean;
   autoComplete?: string;
+  // Solo tiene sentido con type="number": le dice al navegador de a cuánto
+  // avanzan las flechitas y qué valores considera válidos. Es una ayuda de
+  // interfaz, no una validación — el usuario puede escribir cualquier cosa a
+  // mano. La validación real vive en el schema de Zod de cada formulario.
+  step?: string;
 }
 
 // Input reutilizable para los formularios de auth (LoginForm, SignupForm):
 // accesibilidad (label asociado, aria-describedby/aria-invalid/aria-required)
 // resuelta una sola vez acá, en vez de repetirla campo por campo.
-export function FormField({ id, label, type, value, onChange, error, disabled, autoComplete }: FormFieldProps) {
+export function FormField({ id, label, type, value, onChange, error, disabled, autoComplete, step }: FormFieldProps) {
   const errorId = `${id}-error`;
 
   return (
@@ -37,6 +42,7 @@ export function FormField({ id, label, type, value, onChange, error, disabled, a
         aria-invalid={Boolean(error)}
         aria-describedby={error ? errorId : undefined}
         autoComplete={autoComplete}
+        step={step}
         className="form-field__input"
       />
       {error && (

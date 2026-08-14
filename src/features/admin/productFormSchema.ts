@@ -27,7 +27,18 @@ export const productFormSchema = z.object({
   price: z
     .number({ message: "El precio es obligatorio." })
     .positive("El precio debe ser mayor a 0.")
-    .max(99_999_999, "El precio es demasiado alto."),
+    .max(99_999_999, "El precio es demasiado alto.")
+    // El dinero no tiene más de dos decimales: no existe forma de cobrar
+    // $ 10,555. Sin este límite el formulario aceptaba ese valor y lo guardaba
+    // en el catálogo, y a partir de ahí el precio inválido se propagaba solo —
+    // el carrito lo copia tal cual y las reglas de Firestore lo dan por bueno,
+    // porque comparan contra lo que está guardado.
+    //
+    // multipleOf y no una comparación de decimales a mano: 0.1 + 0.2 no da 0.3
+    // en punto flotante, así que un cálculo casero de "cuántos decimales tiene"
+    // falla en casos sueltos. Zod resuelve el resto de forma segura contra ese
+    // problema; verificado con 10.555 (rechaza), 10.55, 10.5, 10 y 0.01 (pasan).
+    .multipleOf(0.01, "El precio no puede tener más de 2 decimales."),
 });
 
 export type ProductFormValues = z.infer<typeof productFormSchema>;
