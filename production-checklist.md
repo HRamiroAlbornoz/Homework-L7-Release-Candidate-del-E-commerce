@@ -22,7 +22,11 @@
 
 - [x] Tests deterministas (sin llamadas reales a internet, Firebase o S3)
   > Firebase se mockea con `vi.mock`; las requests HTTP las intercepta MSW con `onUnhandledRequest: "error"`, así que cualquier request sin handler **rompe** el test en lugar de salir a la red.
-  > Verificado además corriendo la suite completa **sin archivo `.env`**: pasa igual. Y el CI lo confirma en una máquina limpia sin ningún secreto configurado.
+
+- [x] **La suite pasa con el Wi-Fi desconectado**
+  > Verificado cortando la conexión de red por completo: **390 tests en verde, 17.83s** — prácticamente el mismo tiempo que con internet, lo que confirma que ningún test estaba esperando una respuesta remota.
+  >
+  > Dos verificaciones más apuntan a lo mismo desde otro ángulo: la suite pasa **sin archivo `.env`**, y el CI la corre en una máquina limpia sin ningún secreto configurado.
 
 - [x] CI en verde antes de cada merge
   > GitHub Actions corre lint, type-check, tests y build en cada push y pull request. Ningún PR se mergeó en rojo.
@@ -182,3 +186,20 @@ El orden importa: primero se restablece el servicio, después se busca la causa.
 **Corrección:** reconstruir la rama sobre `main` (`git checkout -B rama origin/main`) y traer solo el commit de la corrección con `cherry-pick`.
 
 **Regla que lo evita:** después de un squash merge, la rama se descarta. Rama nueva desde `main` actualizado para cada PR.
+
+### 5. Fallo intermitente local: la suite entera no carga (solo en Windows)
+
+**Síntoma:** ocasionalmente, `npm run test` reporta que **los 22 archivos fallaron** y `Tests no tests`, con un error apuntando al `afterEach` de `src/test/setup.ts` (*"Vitest failed to find the current suite"*). La corrida siguiente pasa en verde sin tocar nada.
+
+**Lo que se pudo determinar con evidencia:**
+
+- Ocurrió **5 veces**, siempre en la ejecución **inmediatamente posterior a escribir varios archivos**.
+- Nunca ocurrió en una corrida aislada: entre incidentes se encadenaron más de 20 ejecuciones limpias seguidas.
+- **Nunca ocurrió en el CI** (Ubuntu), en ninguna de sus corridas.
+- No se pudo reproducir a demanda, ni editando un archivo y ejecutando de inmediato, ni forzando la recompilación con `touch`.
+
+**Hipótesis (no confirmada):** una carrera entre el proceso que escribe los archivos y Vitest leyéndolos. El error señala un hook sin suite a la que engancharse, que es lo que ocurre cuando **ningún archivo de test pudo evaluarse**. En Windows, el antivirus bloquea brevemente los archivos recién escritos para escanearlos, lo que explicaría la intermitencia, la exclusividad de la plataforma y la imposibilidad de reproducirlo a voluntad.
+
+**Estado:** no afecta a la entrega. El CI —que descarga los archivos una vez y recién después ejecuta, sin escrituras concurrentes— nunca lo manifestó. Si aparece localmente, volver a correr la suite.
+
+Se registra igual, y sin conclusión forzada: **un problema que no se pudo reproducir se documenta como hipótesis, no como causa.** Escribir "era el antivirus" sin haberlo demostrado le haría creer al próximo que el asunto está cerrado.

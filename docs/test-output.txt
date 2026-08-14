@@ -1,301 +1,12 @@
 
  RUN  v4.1.10 E:/Henry/Homework/Módulo 5/Front End/Homework L7-Release Candidate del E-commerce
 
- ✓ src/contexts/ProductsContext.test.tsx > useProducts guard > tira un error claro si se usa fuera de ProductsProvider 21ms
- ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > arranca con estado inicial: sin productos, loading en true (evita el flash de EmptyState), hasMore true 5ms
- ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > loadFirstPage carga productos y prende hasMore cuando vuelven pageSize items 4ms
- ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > apaga hasMore cuando vuelven menos items que pageSize 2ms
- ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > con un resultado vacío en la primera página, products queda vacío y hasMore en false 2ms
- ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > loadFirstPage llama a listProducts con los params exactos recibidos, sin agregar cursor 3ms
- ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > pone loading en true de inmediato al iniciar loadFirstPage, antes de que la respuesta resuelva 2ms
- ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > limpia el error previo apenas arranca una nueva loadFirstPage, sin esperar la respuesta 2ms
- ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > loadFirstPage resetea los productos previos al cambiar de filtro (no mezcla resultados) 2ms
- ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > loadMore concatena la nueva página sin duplicar por id 2ms
- ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > loadMore reutiliza los params de la última loadFirstPage y agrega el cursor (lastDoc) 2ms
- ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > pone loadingMore en true de inmediato al iniciar loadMore, antes de que la respuesta resuelva 1ms
- ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > loadMore no hace nada si hasMore ya está en false (guard clause) 1ms
- ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > loadMore no hace nada si todavía no se llamó a loadFirstPage (sin lastDoc/params) 1ms
- ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > guarda un mensaje de error legible si loadFirstPage falla, y lo limpia al reintentar con éxito 1ms
- ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > guarda el error si loadMore falla, sin perder los productos ya cargados 1ms
- ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > reset() limpia también un error previo 1ms
- ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > reset() vuelve el estado al inicial 1ms
- ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > descarta una respuesta vieja de loadFirstPage si resuelve después que un filtro más nuevo (anti-race-condition) 1ms
- ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > descarta una respuesta vieja de loadMore si se disparó un loadFirstPage mientras estaba en vuelo 1ms
- ✓ src/contexts/AuthContext.test.tsx > useAuth guard > tira un error claro si se usa fuera de AuthProvider 21ms
- ✓ src/contexts/AuthContext.test.tsx > AuthContext > arranca en loading: true y user: null antes de que Firebase confirme la sesión 6ms
- ✓ src/contexts/AuthContext.test.tsx > AuthContext > se suscribe a onAuthStateChanged sobre la instancia de auth al montar 5ms
- ✓ src/contexts/AuthContext.test.tsx > AuthContext > se desuscribe al desmontar (llama a la función que devuelve onAuthStateChanged) 2ms
- ✓ src/contexts/AuthContext.test.tsx > AuthContext > cuando Firebase confirma que no hay sesión, pasa a loading: false y user: null 4ms
- ✓ src/contexts/AuthContext.test.tsx > AuthContext > cuando Firebase confirma un usuario con perfil en Firestore, carga el perfil completo (con role) 4ms
- ✓ src/contexts/AuthContext.test.tsx > AuthContext > caso borde: usuario autenticado sin perfil en Firestore (getUserProfile devuelve null) trata la sesión como inválida, sin asumir un rol 2ms
- ✓ src/contexts/AuthContext.test.tsx > AuthContext > caso borde: no fuerza un signOut() al no encontrar perfil (evita competir con este mismo listener) 2ms
- ✓ src/contexts/AuthContext.test.tsx > AuthContext > si getUserProfile falla, guarda el mensaje de error mapeado en español (no el técnico crudo) 2ms
- ✓ src/contexts/AuthContext.test.tsx > AuthContext > signup llama a createUserWithEmailAndPassword, updateProfile y createUserProfile con los datos correctos 2ms
- ✓ src/contexts/AuthContext.test.tsx > AuthContext > signup NUNCA actualiza 'user' por su cuenta: el estado sigue igual hasta que onAuthStateChanged dispare 2ms
- ✓ src/contexts/AuthContext.test.tsx > AuthContext > signup propaga el mensaje de error en español si el email ya está en uso 2ms
- ✓ src/contexts/AuthContext.test.tsx > AuthContext > signup propaga un error mapeado si createUserProfile falla después de crear la cuenta en Auth 1ms
- ✓ src/contexts/AuthContext.test.tsx > AuthContext > si createUserProfile falla después de crear la cuenta en Auth, hace rollback llamando a deleteUser (evita una cuenta huérfana) 1ms
- ✓ src/contexts/AuthContext.test.tsx > AuthContext > si updateProfile falla, también hace rollback llamando a deleteUser 1ms
- ✓ src/contexts/AuthContext.test.tsx > AuthContext > si createUserWithEmailAndPassword falla directamente, NO intenta ningún rollback (no hay cuenta que borrar) 1ms
- ✓ src/contexts/AuthContext.test.tsx > AuthContext > si el rollback (deleteUser) también falla, igual propaga el error ORIGINAL del signup, sin ocultarlo 1ms
- ✓ src/contexts/AuthContext.test.tsx > AuthContext > login llama a signInWithEmailAndPassword con los datos correctos 1ms
- ✓ src/contexts/AuthContext.test.tsx > AuthContext > login NUNCA actualiza 'user' por su cuenta 1ms
- ✓ src/contexts/AuthContext.test.tsx > AuthContext > login propaga 'Email o contraseña incorrectos' ante auth/invalid-credential, sin revelar si el email existe 1ms
- ✓ src/contexts/AuthContext.test.tsx > AuthContext > logout llama a signOut sobre la instancia de auth 1ms
- ✓ src/contexts/AuthContext.test.tsx > AuthContext > logout NUNCA actualiza 'user' por su cuenta 2ms
- ✓ src/contexts/AuthContext.test.tsx > AuthContext > logout propaga un error mapeado si signOut falla 1ms
- ✓ src/contexts/AuthContext.test.tsx > AuthContext > descarta una resolución vieja de getUserProfile si llega un evento más nuevo de onAuthStateChanged (anti-race-condition) 2ms
- ✓ src/services/usersService.test.ts > usersService.getUserProfile > consulta el documento users/{uid} 6ms
- ✓ src/services/usersService.test.ts > usersService.getUserProfile > devuelve el perfil con el uid incorporado cuando el documento existe 1ms
- ✓ src/services/usersService.test.ts > usersService.getUserProfile > pide el timestamp del servidor como 'estimate', no como valor ausente (evita leer createdAt sin resolver justo después de escribirlo) 1ms
- ✓ src/components/auth/FormField.test.tsx > FormField > asocia el label al input mediante htmlFor/id 52ms
- ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > mientras loading es true, muestra el spinner y no redirige ni muestra el contenido 152ms
- ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > con loading terminado y sin usuario, redirige a /login 10ms
- ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > con un usuario customer logueado, muestra el contenido protegido 4ms
- ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > con un usuario admin logueado, también muestra el contenido protegido (no es exclusivo de customer) 3ms
- ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > loading tiene prioridad sobre el error: si hay error pero todavía está cargando, muestra el spinner 10ms
- ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > loading tiene prioridad sobre user: si loading es true, muestra el spinner aunque 'user' ya tenga un valor 8ms
- ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > usa 'replace' (no 'push') al redirigir a /login, para no dejar la ruta protegida en el historial 4ms
- ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > con sesión válida, no queda ningún spinner de carga colgado en el DOM 2ms
- ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > protege también /checkout con el mismo guard: usuario logueado accede 3ms
- ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > protege también /checkout con el mismo guard: usuario no logueado redirige a /login 3ms
- ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > llama a useAuth para leer el estado de sesión 2ms
- ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > nunca llama a login/signup/logout por su cuenta: es solo un guard de lectura 2ms
- ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > el mensaje del spinner es 'Verificando sesión...' 2ms
- ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > con un usuario sin displayName (null), igual permite el acceso (no rompe con ese caso borde) 2ms
- ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > transición loading → logueado: pasa de spinner a contenido sin remontar el árbol 10ms
- ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > transición loading → sin sesión: pasa de spinner a la redirección a /login 7ms
- ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > sin sesión, nunca redirige por error a la home ('/'): siempre va a /login 3ms
- ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > un error previo no cambia el resultado: sin sesión y con error, igual redirige a /login 4ms
- ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > respeta query params en la URL protegida: con sesión, accede igual a /cart?ref=email 2ms
- ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > respeta query params en la URL protegida: sin sesión, redirige igual desde /cart?ref=email 3ms
- ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > mientras carga, el spinner aparece una sola vez (no hay UI de loading duplicada) 6ms
- ✓ src/routes/AdminRoute.test.tsx > AdminRoute > mientras loading es true, muestra el spinner y no redirige ni muestra el panel 148ms
- ✓ src/routes/AdminRoute.test.tsx > AdminRoute > escenario 1: usuario no logueado → redirige a /login 14ms
- ✓ src/routes/AdminRoute.test.tsx > AdminRoute > escenario 2: usuario logueado con role 'customer' → redirige a / (no a /login) 5ms
- ✓ src/routes/AdminRoute.test.tsx > AdminRoute > escenario 3: usuario logueado con role 'admin' → accede correctamente al panel 4ms
- ✓ src/routes/AdminRoute.test.tsx > AdminRoute > loading tiene prioridad sobre el error: si hay error pero todavía está cargando, muestra el spinner 12ms
- ✓ src/routes/AdminRoute.test.tsx > AdminRoute > loading tiene prioridad sobre user: si loading es true, muestra el spinner aunque 'user' ya sea admin 10ms
- ✓ src/routes/AdminRoute.test.tsx > AdminRoute > la redirección a /login (sin sesión) usa 'replace', no 'push' 4ms
- ✓ src/routes/AdminRoute.test.tsx > AdminRoute > la redirección a / (sesión sin rol admin) también usa 'replace', no 'push' 3ms
- ✓ src/routes/AdminRoute.test.tsx > AdminRoute > con acceso admin concedido, no queda ningún spinner de carga colgado en el DOM 2ms
- ✓ src/routes/AdminRoute.test.tsx > AdminRoute > llama a useAuth para leer el estado de sesión y el rol 2ms
- ✓ src/routes/AdminRoute.test.tsx > AdminRoute > nunca llama a login/signup/logout por su cuenta: es solo un guard de lectura 2ms
- ✓ src/routes/AdminRoute.test.tsx > AdminRoute > el mensaje del spinner es 'Verificando sesión...' 2ms
- ✓ src/routes/AdminRoute.test.tsx > AdminRoute > con un admin sin displayName (null), igual permite el acceso (no rompe con ese caso borde) 2ms
- ✓ src/routes/AdminRoute.test.tsx > AdminRoute > transición loading → admin: pasa de spinner al panel sin remontar el árbol 9ms
- ✓ src/routes/AdminRoute.test.tsx > AdminRoute > transición loading → customer: pasa de spinner a la redirección a / 7ms
- ✓ src/routes/AdminRoute.test.tsx > AdminRoute > transición loading → sin sesión: pasa de spinner a la redirección a /login 6ms
- ✓ src/routes/AdminRoute.test.tsx > AdminRoute > un error previo no cambia el resultado: customer con error igual redirige a / (no al panel) 4ms
- ✓ src/routes/AdminRoute.test.tsx > AdminRoute > un error previo no cambia el resultado: sin sesión y con error, igual redirige a /login 3ms
- ✓ src/routes/AdminRoute.test.tsx > AdminRoute > respeta query params en la URL: admin accede igual a /admin?tab=productos 2ms
- ✓ src/routes/AdminRoute.test.tsx > AdminRoute > un usuario customer nunca ve, ni siquiera transitoriamente, el contenido del panel 3ms
- ✓ src/routes/AdminRoute.test.tsx > AdminRoute > sin sesión, nunca redirige directamente a / : la falta de sesión siempre va a /login primero 3ms
- ✓ src/pages/LoginPage.test.tsx > LoginPage > mientras loading es true, muestra el spinner y no el formulario 149ms
- ✓ src/pages/LoginPage.test.tsx > LoginPage > sin sesión, muestra el título y el formulario de login 54ms
- ✓ src/pages/LoginPage.test.tsx > LoginPage > con sesión ya iniciada, redirige a / en vez de mostrar el formulario 9ms
- ✓ src/pages/LoginPage.test.tsx > LoginPage > muestra un link para ir a /signup 18ms
- ✓ src/pages/LoginPage.test.tsx > LoginPage > sin sesión, muestra el campo Email 7ms
- ✓ src/pages/LoginPage.test.tsx > LoginPage > sin sesión, muestra el campo Contraseña 6ms
- ✓ src/pages/SignupPage.test.tsx > SignupPage > mientras loading es true, muestra el spinner y no el formulario 160ms
- ✓ src/pages/SignupPage.test.tsx > SignupPage > sin sesión, muestra el título y el formulario de registro 57ms
- ✓ src/pages/SignupPage.test.tsx > SignupPage > con sesión ya iniciada, redirige a / en vez de mostrar el formulario 8ms
- ✓ src/pages/SignupPage.test.tsx > SignupPage > muestra un link para ir a /login 16ms
- ✓ src/pages/SignupPage.test.tsx > SignupPage > sin sesión, muestra el campo Nombre para mostrar 12ms
- ✓ src/components/auth/FormField.test.tsx > FormField > llama a onChange con el nuevo valor al escribir 174ms
- ✓ src/components/auth/FormField.test.tsx > FormField > sin error, no muestra ningún mensaje ni marca aria-invalid 5ms
- ✓ src/components/auth/FormField.test.tsx > FormField > con error, lo muestra y marca aria-invalid en el input 16ms
- ✓ src/components/auth/FormField.test.tsx > FormField > el input queda vinculado al mensaje de error vía aria-describedby 4ms
- ✓ src/components/auth/FormField.test.tsx > FormField > se deshabilita cuando disabled es true 3ms
- ✓ src/components/auth/FormField.test.tsx > FormField > aplica el autoComplete recibido 2ms
- ✓ src/components/auth/FormField.test.tsx > FormField > marca el input como requerido (required + aria-required) 3ms
- ✓ src/components/auth/FormField.test.tsx > FormField > muestra el value controlado que recibe por props 2ms
- ✓ src/components/auth/FormField.test.tsx > FormField > type='password' arma un input de tipo password (no expone el texto) 2ms
- ✓ src/components/auth/FormField.test.tsx > FormField > type='text' arma un input de tipo text 2ms
- ✓ src/components/auth/FormField.test.tsx > FormField > sin autoComplete, no fija el atributo autocomplete 4ms
- ✓ src/components/auth/FormField.test.tsx > FormField > sin la prop disabled, el input queda habilitado por defecto 3ms
- ✓ src/pages/SignupPage.test.tsx > SignupPage > sin sesión, muestra el campo Email 11ms
- ✓ src/features/cart/components/AddToCartButton.test.tsx > AddToCartButton > el nombre accesible del botón incluye el producto, para poder distinguirlo entre varios 164ms
- ✓ src/features/cart/components/AddToCartButton.test.tsx > AddToCartButton > al hacer click, el contador del carrito pasa de 0 a 1 82ms
- ✓ src/components/Header.test.tsx > Header > siempre muestra el link al catálogo, haya o no sesión 172ms
- ✓ src/components/Header.test.tsx > Header > el link al catálogo apunta a '/' 25ms
- ✓ src/components/Header.test.tsx > Header > sin sesión, muestra el link 'Iniciar sesión' 14ms
- ✓ src/components/Header.test.tsx > Header > el link 'Iniciar sesión' apunta a '/login' 9ms
- ✓ src/components/Header.test.tsx > Header > sin sesión, no muestra el nombre del usuario ni el botón de cerrar sesión 6ms
- ✓ src/components/Header.test.tsx > Header > sin sesión, no muestra el link al panel de administración 8ms
- ✓ src/components/Header.test.tsx > Header > con sesión, muestra el nombre del usuario y el botón de cerrar sesión 12ms
- ✓ src/components/Header.test.tsx > Header > con sesión, ya no muestra el link 'Iniciar sesión' 9ms
- ✓ src/components/Header.test.tsx > Header > con sesión de un customer, NO muestra el link al panel de administración 12ms
- ✓ src/components/auth/FormField.test.tsx > FormField > escribir una palabra completa actualiza el valor mostrado letra por letra (componente controlado real) 95ms
- ✓ src/components/auth/FormField.test.tsx > FormField > el id del mensaje de error se arma como '{id}-error' para cualquier id, no solo 'email' 2ms
- ✓ src/components/auth/FormField.test.tsx > FormField > al pasar de con-error a sin-error (rerender), aria-invalid vuelve a 'false' y el alert desaparece 8ms
- ✓ src/components/auth/FormField.test.tsx > FormField > el label muestra exactamente el texto recibido, distinto de 'Email' 3ms
- ✓ src/components/auth/LoginForm.test.tsx > LoginForm > no llama a login() si el email está vacío (valida antes de tocar Firebase) 389ms
- ✓ src/pages/CartPage.test.tsx > CartPage — estado vacío > muestra un mensaje de carrito vacío y un camino de vuelta al catálogo 166ms
- ✓ src/pages/CartPage.test.tsx > CartPage — estado vacío > no muestra el total ni el botón de vaciar cuando no hay nada que vaciar 11ms
- ✓ src/pages/CartPage.test.tsx > CartPage — con productos > lista un ítem por producto, como lista accesible 30ms
- ✓ src/pages/CartPage.test.tsx > CartPage — con productos > muestra el total de unidades y el monto total 11ms
- ✓ src/pages/CartPage.test.tsx > CartPage — con productos > ofrece el camino al checkout 11ms
- ✓ src/components/Header.test.tsx > Header > con sesión de un admin, SÍ muestra el link al panel de administración 9ms
- ✓ src/components/Header.test.tsx > Header > un admin también ve su nombre y el botón de cerrar sesión (no es exclusivo de customer) 6ms
- ✓ src/components/Header.test.tsx > Header > con displayName null, usa el email como texto de respaldo 2ms
- ✓ src/components/Header.test.tsx > Header > al hacer click en 'Cerrar sesión', llama a logout() 49ms
- ✓ src/pages/CheckoutPage.test.tsx > CheckoutPage — compra exitosa > crea la orden con el usuario y el carrito actuales 222ms
- ✓ src/pages/CheckoutPage.test.tsx > CheckoutPage — compra exitosa > muestra la confirmación con el número de orden 36ms
- ✓ src/components/auth/FormField.test.tsx > FormField > el input es interactuable (se puede escribir) cuando disabled no está presente 116ms
- ✓ src/components/auth/FormField.test.tsx > FormField > dos FormField con ids distintos no colisionan: cada uno muestra su propio mensaje de error 3ms
- ✓ src/components/auth/FormField.test.tsx > FormField > onChange recibe un string vacío al borrar todo el contenido del input 105ms
- ✓ src/features/cart/components/AddToCartButton.test.tsx > AddToCartButton > hacer click dos veces sobre el mismo producto suma 2 unidades 106ms
- ✓ src/pages/CartPage.test.tsx > CartPage — cambiar cantidades > el botón + suma una unidad al producto correcto 79ms
- ✓ src/pages/CartPage.test.tsx > CartPage — cambiar cantidades > el botón − resta una unidad 62ms
- ✓ src/pages/CheckoutPage.test.tsx > CheckoutPage — compra exitosa > vacía el carrito después de registrar la orden 70ms
- ✓ src/pages/CheckoutPage.test.tsx > CheckoutPage — la compra falla > muestra un mensaje de error entendible, no el error técnico 83ms
- ✓ src/components/Header.test.tsx > Header > mientras el logout está en curso, deshabilita el botón y cambia su texto 78ms
- ✓ src/components/Header.test.tsx > Header > si logout() falla, muestra el mensaje de error ya traducido (el que viene en error.message) 67ms
- ✓ src/features/cart/components/AddToCartButton.test.tsx > AddToCartButton > agregar dos productos distintos suma ambos al contador 128ms
- ✓ src/features/cart/components/AddToCartButton.test.tsx > AddToCartButton > muestra una confirmación en el botón después de agregar 58ms
- ✓ src/pages/CartPage.test.tsx > CartPage — cambiar cantidades > bajar de 1 a 0 elimina la fila del carrito 83ms
- ✓ src/pages/CartPage.test.tsx > CartPage — cambiar cantidades > deshabilita el botón + al llegar al máximo de unidades 9ms
- ✓ src/features/cart/components/AddToCartButton.test.tsx > AddToCartButton > la confirmación desaparece sola y el botón vuelve a su texto normal 36ms
- ✓ src/features/cart/components/AddToCartButton.test.tsx > AddToCartButton > no ofrece agregar un producto sin precio: muestra el motivo en su lugar 6ms
- ✓ src/components/Header.test.tsx > Header > si logout() falla con algo que no es un Error, muestra un mensaje genérico (no rompe la UI) 58ms
- ✓ src/components/Header.test.tsx > Header > no muestra ningún mensaje de error antes de intentar cerrar sesión 3ms
- ✓ src/components/Header.test.tsx > Header > un logout exitoso no deja ningún mensaje de error visible 64ms
- ✓ src/pages/CheckoutPage.test.tsx > CheckoutPage — la compra falla > NO vacía el carrito si la orden no se pudo crear 50ms
- ✓ src/pages/CheckoutPage.test.tsx > CheckoutPage — la compra falla > el botón vuelve a habilitarse para poder reintentar 61ms
- ✓ src/pages/CartPage.test.tsx > CartPage — eliminar y vaciar > el botón Eliminar saca solo el producto de esa fila 71ms
- ✓ src/pages/CartPage.test.tsx > CartPage — eliminar y vaciar > vaciar el carrito pide confirmación antes de borrar nada 82ms
- ✓ src/components/Header.test.tsx > Header > un reintento exitoso limpia el mensaje de error de un intento anterior fallido 142ms
- ✓ src/components/Header.test.tsx > Header > no recibe ninguna prop: toda la información sale de useAuth() 3ms
- ✓ src/pages/CheckoutPage.test.tsx > CheckoutPage — la compra falla > limpia el error anterior al reintentar con éxito 130ms
- ✓ src/pages/CheckoutPage.test.tsx > CheckoutPage — protección contra doble envío > dos clicks disparados antes de que React re-renderice crean UNA sola orden 9ms
- ✓ src/pages/CheckoutPage.test.tsx > CheckoutPage — protección contra doble envío > mientras se envía, el botón se deshabilita y avisa que está procesando 60ms
- ✓ src/pages/CheckoutPage.test.tsx > CheckoutPage — carrito vacío > no ofrece confirmar una compra sin productos 4ms
- ✓ src/components/auth/LoginForm.test.tsx > LoginForm > no llama a login() si el email tiene formato inválido 490ms
- ✓ src/pages/LoginPage.test.tsx > LoginPage > completar y enviar el formulario desde la página llama a login() con los datos correctos 593ms
- ✓ src/pages/CartPage.test.tsx > CartPage — eliminar y vaciar > la confirmación nombra los productos que se van a perder 64ms
- ✓ src/components/auth/SignupForm.test.tsx > SignupForm > no llama a signup() si falta el nombre para mostrar 935ms
- ✓ src/services/usersService.test.ts > usersService.getUserProfile > valida los datos crudos con Zod antes de confiar en ellos (rechaza un email con formato inválido) 913ms
- ✓ src/pages/CartPage.test.tsx > CartPage — eliminar y vaciar > cancelar la confirmación deja el carrito como estaba 106ms
- ✓ src/pages/CartPage.test.tsx > CartPage — eliminar y vaciar > confirmar vacía el carrito y muestra el estado vacío 125ms
- ✓ src/features/admin/components/CreateProductForm.test.tsx > CreateProductForm — camino feliz > pide la firma y recién después sube la imagen, en ese orden 845ms
- ✓ src/pages/SignupPage.test.tsx > SignupPage > completar y enviar el formulario desde la página llama a signup() con los datos correctos 876ms
- ✓ src/components/auth/LoginForm.test.tsx > LoginForm > no llama a login() si la contraseña está vacía 371ms
- ✓ src/pages/LoginPage.test.tsx > LoginPage > tras un login exitoso desde la página, termina mostrando el contenido de Home (navegación real) 517ms
- ✓ src/features/admin/components/CreateProductForm.test.tsx > CreateProductForm — camino feliz > manda el token del usuario y los datos del archivo al pedir la firma 611ms
- ✓ src/components/auth/LoginForm.test.tsx > LoginForm > con datos válidos, llama a login() con el email y la contraseña ingresados 576ms
- ✓ src/components/auth/SignupForm.test.tsx > SignupForm > no llama a signup() si el email tiene formato inválido 857ms
- ✓ src/services/usersService.test.ts > usersService.getUserProfile > valida los datos crudos con Zod antes de confiar en ellos (rechaza un role fuera del enum) 915ms
- ✓ src/services/usersService.test.ts > usersService.getUserProfile > no reintenta cuando el documento ya existe en el primer intento 1ms
- ✓ src/services/usersService.test.ts > usersService.getUserProfile > preserva displayName null al leer un perfil sin nombre para mostrar 0ms
- ✓ src/pages/LoginPage.test.tsx > LoginPage > si login() falla, la página muestra el mensaje de error traducido 580ms
- ✓ src/pages/LoginPage.test.tsx > LoginPage > loading true tampoco muestra el link a /signup 2ms
- ✓ src/pages/LoginPage.test.tsx > LoginPage > el título 'Iniciar sesión' es un encabezado de nivel 1 6ms
- ✓ src/pages/LoginPage.test.tsx > LoginPage > con sesión iniciada, no muestra el link a /signup (la página se reemplaza por el redirect) 1ms
- ✓ src/pages/LoginPage.test.tsx > LoginPage > con sesión iniciada, no queda ningún spinner colgado en el DOM 1ms
- ✓ src/pages/LoginPage.test.tsx > LoginPage > loading tiene prioridad sobre user: con loading true y user ya seteado, igual muestra el spinner (no redirige de más) 3ms
- ✓ src/pages/LoginPage.test.tsx > LoginPage > el link a /signup tiene el texto exacto 'Registrate' 4ms
- ✓ src/pages/LoginPage.test.tsx > LoginPage > mientras loading es true, no se dispara ninguna llamada a login() 2ms
- ✓ src/pages/LoginPage.test.tsx > LoginPage > el mensaje del spinner en esta página es 'Verificando sesión...' 1ms
- ✓ src/pages/LoginPage.test.tsx > LoginPage > enviar el formulario vacío muestra los errores de campo, integrados en la página 75ms
- ✓ src/hooks/useDebounce.test.ts > useDebounce > retorna el valor inicial de inmediato 14ms
- ✓ src/hooks/useDebounce.test.ts > useDebounce > no actualiza el valor antes de que se cumpla el delay 3ms
+ ✓ src/hooks/useDebounce.test.ts > useDebounce > retorna el valor inicial de inmediato 20ms
+ ✓ src/hooks/useDebounce.test.ts > useDebounce > no actualiza el valor antes de que se cumpla el delay 4ms
  ✓ src/hooks/useDebounce.test.ts > useDebounce > actualiza el valor una vez que se cumple el delay completo 3ms
  ✓ src/hooks/useDebounce.test.ts > useDebounce > cancela el timeout anterior si el valor cambia antes de tiempo (tipeo rápido) 3ms
  ✓ src/hooks/useDebounce.test.ts > useDebounce > limpia el timeout pendiente al desmontar, sin dejar timers colgados 2ms
- ✓ src/features/cart/useCart.test.tsx > useCart — guard del provider > lanza un error claro si se usa fuera de un CartProvider 14ms
- ✓ src/features/cart/useCart.test.tsx > useCart — estado inicial > arranca con el carrito vacío si no hay nada guardado 6ms
- ✓ src/features/cart/useCart.test.tsx > useCart — estado inicial > arranca con el carrito precargado que le pasa el test, sin simular clicks 2ms
- ✓ src/features/cart/useCart.test.tsx > useCart — estado inicial > recupera el carrito guardado en localStorage de una sesión anterior 3ms
- ✓ src/features/cart/useCart.test.tsx > useCart — acciones > addItem agrega un producto y actualiza los totales 3ms
- ✓ src/features/cart/useCart.test.tsx > useCart — acciones > addItem del mismo producto dos veces deja una sola fila con cantidad 2 2ms
- ✓ src/features/cart/useCart.test.tsx > useCart — acciones > updateQuantity cambia la cantidad y recalcula el total 2ms
- ✓ src/features/cart/useCart.test.tsx > useCart — acciones > updateQuantity a 0 saca el producto del carrito 2ms
- ✓ src/features/cart/useCart.test.tsx > useCart — acciones > removeItem elimina solo el producto indicado 2ms
- ✓ src/features/cart/useCart.test.tsx > useCart — acciones > clearCart deja el carrito vacío y los totales en 0 2ms
- ✓ src/features/cart/useCart.test.tsx > useCart — persistencia > guarda el carrito en localStorage al agregar un producto 2ms
- ✓ src/features/cart/useCart.test.tsx > useCart — persistencia > el carrito sobrevive a un remonte del provider (simula recargar la página) 3ms
- ✓ src/pages/LoginPage.test.tsx > LoginPage > spinner y formulario nunca se muestran a la vez 6ms
- ✓ src/pages/LoginPage.test.tsx > LoginPage > si AuthContext tiene un error de sesión (ej. perfil no encontrado tras un signup interrumpido), la página lo muestra 7ms
- ✓ src/pages/LoginPage.test.tsx > LoginPage > sin error de sesión, no muestra ningún alert antes de interactuar con el formulario 3ms
- ✓ src/lib/authFormSchemas.test.ts > loginFormSchema > acepta un email y contraseña válidos 2ms
- ✓ src/lib/authFormSchemas.test.ts > loginFormSchema > rechaza un email vacío 1ms
- ✓ src/lib/authFormSchemas.test.ts > loginFormSchema > rechaza un email con formato inválido 0ms
- ✓ src/lib/authFormSchemas.test.ts > loginFormSchema > rechaza una contraseña vacía 0ms
- ✓ src/lib/authFormSchemas.test.ts > loginFormSchema > acepta una contraseña de un solo caracter (login no valida longitud mínima, solo que no esté vacía) 0ms
- ✓ src/lib/authFormSchemas.test.ts > loginFormSchema > rechaza si falta el campo email por completo 0ms
- ✓ src/lib/authFormSchemas.test.ts > loginFormSchema > rechaza si falta el campo password por completo 0ms
- ✓ src/lib/authFormSchemas.test.ts > loginFormSchema > rechaza un email con espacios (no es un formato de email válido) 0ms
- ✓ src/lib/authFormSchemas.test.ts > loginFormSchema > acepta una contraseña compuesta solo por espacios (login no valida formato, solo longitud > 0) 0ms
- ✓ src/lib/authFormSchemas.test.ts > loginFormSchema > rechaza una contraseña más larga que el máximo permitido, aunque login no valide formato 0ms
- ✓ src/lib/authFormSchemas.test.ts > loginFormSchema > rechaza un email más largo que el máximo permitido 0ms
- ✓ src/lib/authFormSchemas.test.ts > signupFormSchema > acepta datos completos y válidos 1ms
- ✓ src/lib/authFormSchemas.test.ts > signupFormSchema > rechaza si las contraseñas no coinciden 0ms
- ✓ src/lib/authFormSchemas.test.ts > signupFormSchema > asocia el error de contraseñas distintas al campo confirmPassword 0ms
- ✓ src/lib/authFormSchemas.test.ts > signupFormSchema > rechaza una contraseña de menos de 8 caracteres 0ms
- ✓ src/lib/authFormSchemas.test.ts > signupFormSchema > rechaza una contraseña de exactamente 7 caracteres (justo debajo del mínimo) 0ms
- ✓ src/lib/authFormSchemas.test.ts > signupFormSchema > acepta una contraseña de exactamente 8 caracteres con letras y números (límite inferior) 0ms
- ✓ src/lib/authFormSchemas.test.ts > signupFormSchema > rechaza una contraseña de solo letras (sin ningún número) 0ms
- ✓ src/lib/authFormSchemas.test.ts > signupFormSchema > rechaza una contraseña de solo números (sin ninguna letra) 0ms
- ✓ src/lib/authFormSchemas.test.ts > signupFormSchema > rechaza una contraseña más larga que el máximo permitido (128 caracteres) 0ms
- ✓ src/lib/authFormSchemas.test.ts > signupFormSchema > rechaza un email más largo que el máximo permitido (254 caracteres) 0ms
- ✓ src/lib/authFormSchemas.test.ts > signupFormSchema > rechaza un displayName más largo que el máximo permitido (100 caracteres) 0ms
- ✓ src/lib/authFormSchemas.test.ts > signupFormSchema > rechaza un displayName vacío 0ms
- ✓ src/lib/authFormSchemas.test.ts > signupFormSchema > rechaza un email con formato inválido 0ms
- ✓ src/lib/authFormSchemas.test.ts > signupFormSchema > rechaza si falta el campo confirmPassword por completo 0ms
- ✓ src/lib/authFormSchemas.test.ts > signupFormSchema > acepta un displayName con tildes y caracteres propios del español 0ms
- ✓ src/lib/authFormSchemas.test.ts > signupFormSchema > acepta (sin filtrar) un displayName compuesto solo por espacios, porque min(1) cuenta caracteres, no contenido significativo 0ms
- ✓ src/components/auth/LoginForm.test.tsx > LoginForm > tras un login exitoso, redirige a '/' con replace 449ms
- ✓ src/features/admin/components/CreateProductForm.test.tsx > CreateProductForm — camino feliz > crea el producto con la URL pública devuelta por el servidor 633ms
- ✓ src/services/productsService.test.ts > productsService.listProducts > consulta la colección 'products' de la instancia db 3ms
- ✓ src/services/productsService.test.ts > productsService.listProducts > usa el converter del catálogo (withConverter) sobre la colección products 0ms
- ✓ src/services/productsService.test.ts > productsService.listProducts > arma la query sobre la referencia ya convertida, no sobre la colección cruda 0ms
- ✓ src/services/productsService.test.ts > productsService.listProducts > agrega el filtro where cuando hay categoryId 0ms
- ✓ src/services/productsService.test.ts > productsService.listProducts > no agrega where cuando no hay categoryId 0ms
- ✓ src/services/productsService.test.ts > productsService.listProducts > arma el rango de prefijo con startAt/endAt cuando searchPrefix tiene 2+ caracteres, normalizado a minúsculas 0ms
- ✓ src/services/productsService.test.ts > productsService.listProducts > respeta el limite exacto de MIN_SEARCH_CHARS: un prefijo con justo ese largo ya dispara la busqueda 0ms
- ✓ src/services/productsService.test.ts > productsService.listProducts > trata un searchPrefix vacio igual que sin busqueda (ordena por nameLower, sin startAt/endAt) 0ms
- ✓ src/services/productsService.test.ts > productsService.listProducts > combina categoryId y searchPrefix en la misma consulta (where + rango de prefijo a la vez) 0ms
- ✓ src/services/productsService.test.ts > productsService.listProducts > ignora searchPrefix si tiene menos de 2 caracteres (pero igual ordena por nameLower) 0ms
- ✓ src/services/productsService.test.ts > productsService.listProducts > usa startAfter (no startAt) cuando se pasa un cursor de paginación 0ms
- ✓ src/services/productsService.test.ts > productsService.listProducts > sin cursor no agrega el constraint startAfter 0ms
- ✓ src/services/productsService.test.ts > productsService.listProducts > incluye siempre el limit con pageSize 0ms
- ✓ src/services/productsService.test.ts > productsService.listProducts > usa el pageSize exacto que recibe, no un valor fijo 0ms
- ✓ src/services/productsService.test.ts > productsService.listProducts > invoca getDocs con exactamente el objeto que devolvio query() 0ms
- ✓ src/services/productsService.test.ts > productsService.listProducts > retorna items mapeados y lastDoc a partir del último doc del snapshot 0ms
- ✓ src/services/productsService.test.ts > productsService.listProducts > preserva el orden de los documentos tal como los devuelve el snapshot 0ms
- ✓ src/services/productsService.test.ts > productsService.listProducts > con un solo documento en el snapshot, lastDoc apunta a ese unico documento 0ms
- ✓ src/services/productsService.test.ts > productsService.listProducts > retorna lastDoc null cuando el snapshot viene vacío 0ms
- ✓ src/services/productsService.test.ts > productsService.listProducts > propaga un Error legible si getDocs falla con un Error real 2ms
- ✓ src/services/productsService.test.ts > productsService.listProducts > envuelve en un Error genérico si falla con algo que no es un Error 0ms
- ✓ src/features/cart/cartStorage.test.ts > loadCartState > devuelve un carrito vacío cuando no hay nada guardado (primera visita) 2ms
- ✓ src/features/cart/cartStorage.test.ts > loadCartState > recupera un carrito válido guardado previamente 2ms
- ✓ src/features/cart/cartStorage.test.ts > loadCartState > recalcula los totales si el JSON guardado tiene totales que no coinciden con los ítems 1ms
- ✓ src/features/cart/cartStorage.test.ts > loadCartState > descarta y borra lo guardado si no cumple el schema (formato de otra versión) 1ms
- ✓ src/features/cart/cartStorage.test.ts > loadCartState > devuelve un carrito vacío si lo guardado no es JSON válido 1ms
- ✓ src/features/cart/cartStorage.test.ts > loadCartState > devuelve un carrito vacío si el navegador bloquea el acceso a localStorage 0ms
- ✓ src/features/cart/cartStorage.test.ts > saveCartState > guarda el carrito serializado bajo la clave versionada 0ms
- ✓ src/features/cart/cartStorage.test.ts > saveCartState > lo guardado se puede volver a leer con loadCartState (ida y vuelta completa) 0ms
- ✓ src/features/cart/cartStorage.test.ts > saveCartState > no lanza una excepción si el navegador rechaza la escritura (cuota llena) 1ms
- ✓ src/components/auth/SignupForm.test.tsx > SignupForm > no llama a signup() si la contraseña tiene menos de 8 caracteres 762ms
- ✓ src/features/cart/cartReducer.test.ts > cartReducer — ADD_ITEM > agrega un producto nuevo a un carrito vacío con cantidad 1 3ms
- ✓ src/features/cart/cartReducer.test.ts > cartReducer — ADD_ITEM > agregar un producto que ya está en el carrito incrementa su cantidad en vez de duplicar la fila 0ms
- ✓ src/features/cart/cartReducer.test.ts > cartReducer — ADD_ITEM > agregar un producto distinto suma una fila nueva y acumula los totales de ambos 0ms
- ✓ src/features/cart/cartReducer.test.ts > cartReducer — ADD_ITEM > no supera el máximo de unidades por producto aunque se agregue de nuevo 0ms
- ✓ src/features/cart/cartReducer.test.ts > cartReducer — ADD_ITEM > redondea el total a 2 decimales (0.1 + 0.2 no debe dar 0.30000000000000004) 0ms
- ✓ src/features/cart/cartReducer.test.ts > cartReducer — UPDATE_QUANTITY > cambia la cantidad de un producto y recalcula los totales 0ms
- ✓ src/features/cart/cartReducer.test.ts > cartReducer — UPDATE_QUANTITY > con cantidad 0 elimina el producto del carrito 0ms
- ✓ src/features/cart/cartReducer.test.ts > cartReducer — UPDATE_QUANTITY > con cantidad negativa también elimina el producto, en vez de dejar un total negativo 0ms
- ✓ src/features/cart/cartReducer.test.ts > cartReducer — UPDATE_QUANTITY > descarta los decimales de la cantidad (2.7 unidades se guardan como 2) 0ms
- ✓ src/features/cart/cartReducer.test.ts > cartReducer — UPDATE_QUANTITY > no supera el máximo de unidades por producto 0ms
- ✓ src/features/cart/cartReducer.test.ts > cartReducer — UPDATE_QUANTITY > deja el estado intacto si el producto no está en el carrito 0ms
- ✓ src/features/cart/cartReducer.test.ts > cartReducer — REMOVE_ITEM > elimina el producto indicado y deja los demás, recalculando los totales 0ms
- ✓ src/features/cart/cartReducer.test.ts > cartReducer — REMOVE_ITEM > deja el estado intacto si el producto no está en el carrito 0ms
- ✓ src/features/cart/cartReducer.test.ts > cartReducer — CLEAR_CART > vacía el carrito y pone los totales en 0 0ms
- ✓ src/features/cart/cartReducer.test.ts > cartReducer — CLEAR_CART > sobre un carrito ya vacío no rompe ni cambia nada 0ms
- ✓ src/features/cart/cartReducer.test.ts > cartReducer — inmutabilidad > no muta el estado recibido: el carrito original queda exactamente igual 0ms
- ✓ src/pages/LoginPage.test.tsx > LoginPage > tras corregir un error de campo y reenviar con éxito, la página termina mostrando Home 631ms
- ✓ src/lib/authErrors.test.ts > mapAuthError > códigos de signup > traduce auth/email-already-in-use 1ms
+ ✓ src/lib/authErrors.test.ts > mapAuthError > códigos de signup > traduce auth/email-already-in-use 2ms
  ✓ src/lib/authErrors.test.ts > mapAuthError > códigos de signup > traduce auth/weak-password 0ms
  ✓ src/lib/authErrors.test.ts > mapAuthError > códigos de signup > traduce auth/operation-not-allowed 0ms
  ✓ src/lib/authErrors.test.ts > mapAuthError > códigos de login > traduce auth/invalid-credential 0ms
@@ -317,11 +28,291 @@
  ✓ src/lib/authErrors.test.ts > mapAuthError > devuelve el mensaje genérico si el error no es un FirebaseError, aunque tenga forma parecida (duck typing no cuenta) 0ms
  ✓ src/lib/authErrors.test.ts > mapAuthError > devuelve el mensaje genérico si el error es un Error común (no de Firebase) 0ms
  ✓ src/lib/authErrors.test.ts > mapAuthError > devuelve el mensaje genérico ante valores que ni siquiera son un Error 0ms
- ✓ src/lib/authErrors.test.ts > mapAuthError > todos los mensajes de la tabla están en español, no vienen vacíos, y tienen un code distinto de UNKNOWN_ERROR 1ms
- ✓ src/services/usersService.test.ts > usersService.getUserProfile > rechaza el documento si falta el campo email 903ms
- ✓ src/components/auth/LoginForm.test.tsx > LoginForm > mientras se envía, deshabilita los inputs y el botón, y cambia el texto del botón 540ms
- ✓ src/pages/SignupPage.test.tsx > SignupPage > tras un signup exitoso desde la página, termina mostrando el contenido de Home (navegación real) 899ms
- ✓ src/pages/SignupPage.test.tsx > SignupPage > si signup() falla, la página muestra el mensaje de error traducido 870ms
+ ✓ src/lib/authErrors.test.ts > mapAuthError > todos los mensajes de la tabla están en español, no vienen vacíos, y tienen un code distinto de UNKNOWN_ERROR 2ms
+ ✓ src/lib/authFormSchemas.test.ts > loginFormSchema > acepta un email y contraseña válidos 5ms
+ ✓ src/lib/authFormSchemas.test.ts > loginFormSchema > rechaza un email vacío 1ms
+ ✓ src/lib/authFormSchemas.test.ts > loginFormSchema > rechaza un email con formato inválido 1ms
+ ✓ src/lib/authFormSchemas.test.ts > loginFormSchema > rechaza una contraseña vacía 1ms
+ ✓ src/lib/authFormSchemas.test.ts > loginFormSchema > acepta una contraseña de un solo caracter (login no valida longitud mínima, solo que no esté vacía) 0ms
+ ✓ src/lib/authFormSchemas.test.ts > loginFormSchema > rechaza si falta el campo email por completo 1ms
+ ✓ src/lib/authFormSchemas.test.ts > loginFormSchema > rechaza si falta el campo password por completo 0ms
+ ✓ src/lib/authFormSchemas.test.ts > loginFormSchema > rechaza un email con espacios (no es un formato de email válido) 0ms
+ ✓ src/lib/authFormSchemas.test.ts > loginFormSchema > acepta una contraseña compuesta solo por espacios (login no valida formato, solo longitud > 0) 0ms
+ ✓ src/lib/authFormSchemas.test.ts > loginFormSchema > rechaza una contraseña más larga que el máximo permitido, aunque login no valide formato 1ms
+ ✓ src/lib/authFormSchemas.test.ts > loginFormSchema > rechaza un email más largo que el máximo permitido 0ms
+ ✓ src/lib/authFormSchemas.test.ts > signupFormSchema > acepta datos completos y válidos 1ms
+ ✓ src/lib/authFormSchemas.test.ts > signupFormSchema > rechaza si las contraseñas no coinciden 0ms
+ ✓ src/lib/authFormSchemas.test.ts > signupFormSchema > asocia el error de contraseñas distintas al campo confirmPassword 1ms
+ ✓ src/lib/authFormSchemas.test.ts > signupFormSchema > rechaza una contraseña de menos de 8 caracteres 0ms
+ ✓ src/lib/authFormSchemas.test.ts > signupFormSchema > rechaza una contraseña de exactamente 7 caracteres (justo debajo del mínimo) 0ms
+ ✓ src/lib/authFormSchemas.test.ts > signupFormSchema > acepta una contraseña de exactamente 8 caracteres con letras y números (límite inferior) 0ms
+ ✓ src/lib/authFormSchemas.test.ts > signupFormSchema > rechaza una contraseña de solo letras (sin ningún número) 0ms
+ ✓ src/lib/authFormSchemas.test.ts > signupFormSchema > rechaza una contraseña de solo números (sin ninguna letra) 0ms
+ ✓ src/lib/authFormSchemas.test.ts > signupFormSchema > rechaza una contraseña más larga que el máximo permitido (128 caracteres) 0ms
+ ✓ src/lib/authFormSchemas.test.ts > signupFormSchema > rechaza un email más largo que el máximo permitido (254 caracteres) 0ms
+ ✓ src/lib/authFormSchemas.test.ts > signupFormSchema > rechaza un displayName más largo que el máximo permitido (100 caracteres) 0ms
+ ✓ src/lib/authFormSchemas.test.ts > signupFormSchema > rechaza un displayName vacío 0ms
+ ✓ src/lib/authFormSchemas.test.ts > signupFormSchema > rechaza un email con formato inválido 0ms
+ ✓ src/lib/authFormSchemas.test.ts > signupFormSchema > rechaza si falta el campo confirmPassword por completo 0ms
+ ✓ src/lib/authFormSchemas.test.ts > signupFormSchema > acepta un displayName con tildes y caracteres propios del español 0ms
+ ✓ src/lib/authFormSchemas.test.ts > signupFormSchema > acepta (sin filtrar) un displayName compuesto solo por espacios, porque min(1) cuenta caracteres, no contenido significativo 0ms
+ ✓ src/contexts/ProductsContext.test.tsx > useProducts guard > tira un error claro si se usa fuera de ProductsProvider 21ms
+ ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > arranca con estado inicial: sin productos, loading en true (evita el flash de EmptyState), hasMore true 5ms
+ ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > loadFirstPage carga productos y prende hasMore cuando vuelven pageSize items 4ms
+ ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > apaga hasMore cuando vuelven menos items que pageSize 3ms
+ ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > con un resultado vacío en la primera página, products queda vacío y hasMore en false 2ms
+ ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > loadFirstPage llama a listProducts con los params exactos recibidos, sin agregar cursor 3ms
+ ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > pone loading en true de inmediato al iniciar loadFirstPage, antes de que la respuesta resuelva 2ms
+ ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > limpia el error previo apenas arranca una nueva loadFirstPage, sin esperar la respuesta 2ms
+ ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > loadFirstPage resetea los productos previos al cambiar de filtro (no mezcla resultados) 2ms
+ ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > loadMore concatena la nueva página sin duplicar por id 2ms
+ ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > loadMore reutiliza los params de la última loadFirstPage y agrega el cursor (lastDoc) 2ms
+ ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > pone loadingMore en true de inmediato al iniciar loadMore, antes de que la respuesta resuelva 6ms
+ ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > loadMore no hace nada si hasMore ya está en false (guard clause) 1ms
+ ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > loadMore no hace nada si todavía no se llamó a loadFirstPage (sin lastDoc/params) 1ms
+ ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > guarda un mensaje de error legible si loadFirstPage falla, y lo limpia al reintentar con éxito 3ms
+ ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > guarda el error si loadMore falla, sin perder los productos ya cargados 2ms
+ ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > reset() limpia también un error previo 5ms
+ ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > reset() vuelve el estado al inicial 3ms
+ ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > descarta una respuesta vieja de loadFirstPage si resuelve después que un filtro más nuevo (anti-race-condition) 5ms
+ ✓ src/contexts/ProductsContext.test.tsx > ProductsContext > descarta una respuesta vieja de loadMore si se disparó un loadFirstPage mientras estaba en vuelo 2ms
+ ✓ src/contexts/AuthContext.test.tsx > useAuth guard > tira un error claro si se usa fuera de AuthProvider 21ms
+ ✓ src/contexts/AuthContext.test.tsx > AuthContext > arranca en loading: true y user: null antes de que Firebase confirme la sesión 5ms
+ ✓ src/contexts/AuthContext.test.tsx > AuthContext > se suscribe a onAuthStateChanged sobre la instancia de auth al montar 5ms
+ ✓ src/contexts/AuthContext.test.tsx > AuthContext > se desuscribe al desmontar (llama a la función que devuelve onAuthStateChanged) 2ms
+ ✓ src/contexts/AuthContext.test.tsx > AuthContext > cuando Firebase confirma que no hay sesión, pasa a loading: false y user: null 4ms
+ ✓ src/contexts/AuthContext.test.tsx > AuthContext > cuando Firebase confirma un usuario con perfil en Firestore, carga el perfil completo (con role) 2ms
+ ✓ src/contexts/AuthContext.test.tsx > AuthContext > caso borde: usuario autenticado sin perfil en Firestore (getUserProfile devuelve null) trata la sesión como inválida, sin asumir un rol 2ms
+ ✓ src/contexts/AuthContext.test.tsx > AuthContext > caso borde: no fuerza un signOut() al no encontrar perfil (evita competir con este mismo listener) 2ms
+ ✓ src/contexts/AuthContext.test.tsx > AuthContext > si getUserProfile falla, guarda el mensaje de error mapeado en español (no el técnico crudo) 2ms
+ ✓ src/contexts/AuthContext.test.tsx > AuthContext > signup llama a createUserWithEmailAndPassword, updateProfile y createUserProfile con los datos correctos 3ms
+ ✓ src/contexts/AuthContext.test.tsx > AuthContext > signup NUNCA actualiza 'user' por su cuenta: el estado sigue igual hasta que onAuthStateChanged dispare 2ms
+ ✓ src/contexts/AuthContext.test.tsx > AuthContext > signup propaga el mensaje de error en español si el email ya está en uso 5ms
+ ✓ src/contexts/AuthContext.test.tsx > AuthContext > signup propaga un error mapeado si createUserProfile falla después de crear la cuenta en Auth 2ms
+ ✓ src/contexts/AuthContext.test.tsx > AuthContext > si createUserProfile falla después de crear la cuenta en Auth, hace rollback llamando a deleteUser (evita una cuenta huérfana) 2ms
+ ✓ src/contexts/AuthContext.test.tsx > AuthContext > si updateProfile falla, también hace rollback llamando a deleteUser 1ms
+ ✓ src/contexts/AuthContext.test.tsx > AuthContext > si createUserWithEmailAndPassword falla directamente, NO intenta ningún rollback (no hay cuenta que borrar) 2ms
+ ✓ src/contexts/AuthContext.test.tsx > AuthContext > si el rollback (deleteUser) también falla, igual propaga el error ORIGINAL del signup, sin ocultarlo 2ms
+ ✓ src/contexts/AuthContext.test.tsx > AuthContext > login llama a signInWithEmailAndPassword con los datos correctos 1ms
+ ✓ src/contexts/AuthContext.test.tsx > AuthContext > login NUNCA actualiza 'user' por su cuenta 1ms
+ ✓ src/contexts/AuthContext.test.tsx > AuthContext > login propaga 'Email o contraseña incorrectos' ante auth/invalid-credential, sin revelar si el email existe 1ms
+ ✓ src/contexts/AuthContext.test.tsx > AuthContext > logout llama a signOut sobre la instancia de auth 1ms
+ ✓ src/contexts/AuthContext.test.tsx > AuthContext > logout NUNCA actualiza 'user' por su cuenta 1ms
+ ✓ src/contexts/AuthContext.test.tsx > AuthContext > logout propaga un error mapeado si signOut falla 1ms
+ ✓ src/contexts/AuthContext.test.tsx > AuthContext > descarta una resolución vieja de getUserProfile si llega un evento más nuevo de onAuthStateChanged (anti-race-condition) 2ms
+ ✓ src/services/productsService.test.ts > productsService.listProducts > consulta la colección 'products' de la instancia db 4ms
+ ✓ src/services/productsService.test.ts > productsService.listProducts > usa el converter del catálogo (withConverter) sobre la colección products 1ms
+ ✓ src/services/productsService.test.ts > productsService.listProducts > arma la query sobre la referencia ya convertida, no sobre la colección cruda 0ms
+ ✓ src/services/productsService.test.ts > productsService.listProducts > agrega el filtro where cuando hay categoryId 1ms
+ ✓ src/services/productsService.test.ts > productsService.listProducts > no agrega where cuando no hay categoryId 0ms
+ ✓ src/services/productsService.test.ts > productsService.listProducts > arma el rango de prefijo con startAt/endAt cuando searchPrefix tiene 2+ caracteres, normalizado a minúsculas 1ms
+ ✓ src/services/productsService.test.ts > productsService.listProducts > respeta el limite exacto de MIN_SEARCH_CHARS: un prefijo con justo ese largo ya dispara la busqueda 0ms
+ ✓ src/services/productsService.test.ts > productsService.listProducts > trata un searchPrefix vacio igual que sin busqueda (ordena por nameLower, sin startAt/endAt) 0ms
+ ✓ src/services/productsService.test.ts > productsService.listProducts > combina categoryId y searchPrefix en la misma consulta (where + rango de prefijo a la vez) 0ms
+ ✓ src/services/productsService.test.ts > productsService.listProducts > ignora searchPrefix si tiene menos de 2 caracteres (pero igual ordena por nameLower) 1ms
+ ✓ src/services/productsService.test.ts > productsService.listProducts > usa startAfter (no startAt) cuando se pasa un cursor de paginación 0ms
+ ✓ src/services/productsService.test.ts > productsService.listProducts > sin cursor no agrega el constraint startAfter 0ms
+ ✓ src/services/productsService.test.ts > productsService.listProducts > incluye siempre el limit con pageSize 0ms
+ ✓ src/services/productsService.test.ts > productsService.listProducts > usa el pageSize exacto que recibe, no un valor fijo 0ms
+ ✓ src/services/productsService.test.ts > productsService.listProducts > invoca getDocs con exactamente el objeto que devolvio query() 1ms
+ ✓ src/services/productsService.test.ts > productsService.listProducts > retorna items mapeados y lastDoc a partir del último doc del snapshot 0ms
+ ✓ src/services/productsService.test.ts > productsService.listProducts > preserva el orden de los documentos tal como los devuelve el snapshot 0ms
+ ✓ src/services/productsService.test.ts > productsService.listProducts > con un solo documento en el snapshot, lastDoc apunta a ese unico documento 0ms
+ ✓ src/services/productsService.test.ts > productsService.listProducts > retorna lastDoc null cuando el snapshot viene vacío 0ms
+ ✓ src/services/productsService.test.ts > productsService.listProducts > propaga un Error legible si getDocs falla con un Error real 2ms
+ ✓ src/services/productsService.test.ts > productsService.listProducts > envuelve en un Error genérico si falla con algo que no es un Error 0ms
+ ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > mientras loading es true, muestra el spinner y no redirige ni muestra el contenido 182ms
+ ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > con loading terminado y sin usuario, redirige a /login 14ms
+ ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > con un usuario customer logueado, muestra el contenido protegido 4ms
+ ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > con un usuario admin logueado, también muestra el contenido protegido (no es exclusivo de customer) 3ms
+ ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > loading tiene prioridad sobre el error: si hay error pero todavía está cargando, muestra el spinner 10ms
+ ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > loading tiene prioridad sobre user: si loading es true, muestra el spinner aunque 'user' ya tenga un valor 8ms
+ ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > usa 'replace' (no 'push') al redirigir a /login, para no dejar la ruta protegida en el historial 3ms
+ ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > con sesión válida, no queda ningún spinner de carga colgado en el DOM 2ms
+ ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > protege también /checkout con el mismo guard: usuario logueado accede 2ms
+ ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > protege también /checkout con el mismo guard: usuario no logueado redirige a /login 8ms
+ ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > llama a useAuth para leer el estado de sesión 18ms
+ ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > nunca llama a login/signup/logout por su cuenta: es solo un guard de lectura 2ms
+ ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > el mensaje del spinner es 'Verificando sesión...' 3ms
+ ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > con un usuario sin displayName (null), igual permite el acceso (no rompe con ese caso borde) 4ms
+ ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > transición loading → logueado: pasa de spinner a contenido sin remontar el árbol 7ms
+ ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > transición loading → sin sesión: pasa de spinner a la redirección a /login 6ms
+ ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > sin sesión, nunca redirige por error a la home ('/'): siempre va a /login 4ms
+ ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > un error previo no cambia el resultado: sin sesión y con error, igual redirige a /login 3ms
+ ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > respeta query params en la URL protegida: con sesión, accede igual a /cart?ref=email 2ms
+ ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > respeta query params en la URL protegida: sin sesión, redirige igual desde /cart?ref=email 5ms
+ ✓ src/routes/ProtectedRoute.test.tsx > ProtectedRoute > mientras carga, el spinner aparece una sola vez (no hay UI de loading duplicada) 8ms
+ ✓ src/components/auth/FormField.test.tsx > FormField > asocia el label al input mediante htmlFor/id 41ms
+ ✓ src/routes/AdminRoute.test.tsx > AdminRoute > mientras loading es true, muestra el spinner y no redirige ni muestra el panel 171ms
+ ✓ src/routes/AdminRoute.test.tsx > AdminRoute > escenario 1: usuario no logueado → redirige a /login 15ms
+ ✓ src/routes/AdminRoute.test.tsx > AdminRoute > escenario 2: usuario logueado con role 'customer' → redirige a / (no a /login) 12ms
+ ✓ src/routes/AdminRoute.test.tsx > AdminRoute > escenario 3: usuario logueado con role 'admin' → accede correctamente al panel 7ms
+ ✓ src/routes/AdminRoute.test.tsx > AdminRoute > loading tiene prioridad sobre el error: si hay error pero todavía está cargando, muestra el spinner 25ms
+ ✓ src/routes/AdminRoute.test.tsx > AdminRoute > loading tiene prioridad sobre user: si loading es true, muestra el spinner aunque 'user' ya sea admin 7ms
+ ✓ src/routes/AdminRoute.test.tsx > AdminRoute > la redirección a /login (sin sesión) usa 'replace', no 'push' 4ms
+ ✓ src/routes/AdminRoute.test.tsx > AdminRoute > la redirección a / (sesión sin rol admin) también usa 'replace', no 'push' 3ms
+ ✓ src/routes/AdminRoute.test.tsx > AdminRoute > con acceso admin concedido, no queda ningún spinner de carga colgado en el DOM 3ms
+ ✓ src/routes/AdminRoute.test.tsx > AdminRoute > llama a useAuth para leer el estado de sesión y el rol 2ms
+ ✓ src/routes/AdminRoute.test.tsx > AdminRoute > nunca llama a login/signup/logout por su cuenta: es solo un guard de lectura 2ms
+ ✓ src/routes/AdminRoute.test.tsx > AdminRoute > el mensaje del spinner es 'Verificando sesión...' 2ms
+ ✓ src/routes/AdminRoute.test.tsx > AdminRoute > con un admin sin displayName (null), igual permite el acceso (no rompe con ese caso borde) 2ms
+ ✓ src/routes/AdminRoute.test.tsx > AdminRoute > transición loading → admin: pasa de spinner al panel sin remontar el árbol 8ms
+ ✓ src/routes/AdminRoute.test.tsx > AdminRoute > transición loading → customer: pasa de spinner a la redirección a / 8ms
+ ✓ src/routes/AdminRoute.test.tsx > AdminRoute > transición loading → sin sesión: pasa de spinner a la redirección a /login 12ms
+ ✓ src/routes/AdminRoute.test.tsx > AdminRoute > un error previo no cambia el resultado: customer con error igual redirige a / (no al panel) 3ms
+ ✓ src/routes/AdminRoute.test.tsx > AdminRoute > un error previo no cambia el resultado: sin sesión y con error, igual redirige a /login 10ms
+ ✓ src/routes/AdminRoute.test.tsx > AdminRoute > respeta query params en la URL: admin accede igual a /admin?tab=productos 3ms
+ ✓ src/routes/AdminRoute.test.tsx > AdminRoute > un usuario customer nunca ve, ni siquiera transitoriamente, el contenido del panel 10ms
+ ✓ src/routes/AdminRoute.test.tsx > AdminRoute > sin sesión, nunca redirige directamente a / : la falta de sesión siempre va a /login primero 7ms
+ ✓ src/components/auth/FormField.test.tsx > FormField > llama a onChange con el nuevo valor al escribir 193ms
+ ✓ src/components/auth/FormField.test.tsx > FormField > sin error, no muestra ningún mensaje ni marca aria-invalid 5ms
+ ✓ src/components/auth/FormField.test.tsx > FormField > con error, lo muestra y marca aria-invalid en el input 12ms
+ ✓ src/components/auth/FormField.test.tsx > FormField > el input queda vinculado al mensaje de error vía aria-describedby 4ms
+ ✓ src/components/auth/FormField.test.tsx > FormField > se deshabilita cuando disabled es true 3ms
+ ✓ src/components/auth/FormField.test.tsx > FormField > aplica el autoComplete recibido 2ms
+ ✓ src/components/auth/FormField.test.tsx > FormField > marca el input como requerido (required + aria-required) 2ms
+ ✓ src/components/auth/FormField.test.tsx > FormField > muestra el value controlado que recibe por props 2ms
+ ✓ src/components/auth/FormField.test.tsx > FormField > type='password' arma un input de tipo password (no expone el texto) 3ms
+ ✓ src/components/auth/FormField.test.tsx > FormField > type='text' arma un input de tipo text 3ms
+ ✓ src/components/auth/FormField.test.tsx > FormField > sin autoComplete, no fija el atributo autocomplete 3ms
+ ✓ src/components/auth/FormField.test.tsx > FormField > sin la prop disabled, el input queda habilitado por defecto 7ms
+ ✓ src/components/Header.test.tsx > Header > siempre muestra el link al catálogo, haya o no sesión 211ms
+ ✓ src/components/Header.test.tsx > Header > el link al catálogo apunta a '/' 24ms
+ ✓ src/components/Header.test.tsx > Header > sin sesión, muestra el link 'Iniciar sesión' 29ms
+ ✓ src/components/Header.test.tsx > Header > el link 'Iniciar sesión' apunta a '/login' 12ms
+ ✓ src/components/Header.test.tsx > Header > sin sesión, no muestra el nombre del usuario ni el botón de cerrar sesión 6ms
+ ✓ src/components/Header.test.tsx > Header > sin sesión, no muestra el link al panel de administración 13ms
+ ✓ src/services/usersService.test.ts > usersService.getUserProfile > consulta el documento users/{uid} 6ms
+ ✓ src/services/usersService.test.ts > usersService.getUserProfile > devuelve el perfil con el uid incorporado cuando el documento existe 1ms
+ ✓ src/services/usersService.test.ts > usersService.getUserProfile > pide el timestamp del servidor como 'estimate', no como valor ausente (evita leer createdAt sin resolver justo después de escribirlo) 1ms
+ ✓ src/pages/LoginPage.test.tsx > LoginPage > mientras loading es true, muestra el spinner y no el formulario 181ms
+ ✓ src/pages/LoginPage.test.tsx > LoginPage > sin sesión, muestra el título y el formulario de login 44ms
+ ✓ src/pages/LoginPage.test.tsx > LoginPage > con sesión ya iniciada, redirige a / en vez de mostrar el formulario 9ms
+ ✓ src/pages/LoginPage.test.tsx > LoginPage > muestra un link para ir a /signup 15ms
+ ✓ src/pages/LoginPage.test.tsx > LoginPage > sin sesión, muestra el campo Email 9ms
+ ✓ src/pages/LoginPage.test.tsx > LoginPage > sin sesión, muestra el campo Contraseña 5ms
+ ✓ src/components/Header.test.tsx > Header > con sesión, muestra el nombre del usuario y el botón de cerrar sesión 15ms
+ ✓ src/components/Header.test.tsx > Header > con sesión, ya no muestra el link 'Iniciar sesión' 10ms
+ ✓ src/components/Header.test.tsx > Header > con sesión de un customer, NO muestra el link al panel de administración 13ms
+ ✓ src/components/Header.test.tsx > Header > con sesión de un admin, SÍ muestra el link al panel de administración 10ms
+ ✓ src/components/Header.test.tsx > Header > un admin también ve su nombre y el botón de cerrar sesión (no es exclusivo de customer) 8ms
+ ✓ src/components/Header.test.tsx > Header > con displayName null, usa el email como texto de respaldo 3ms
+ ✓ src/components/Header.test.tsx > Header > al hacer click en 'Cerrar sesión', llama a logout() 47ms
+ ✓ src/components/auth/FormField.test.tsx > FormField > escribir una palabra completa actualiza el valor mostrado letra por letra (componente controlado real) 101ms
+ ✓ src/components/auth/FormField.test.tsx > FormField > el id del mensaje de error se arma como '{id}-error' para cualquier id, no solo 'email' 2ms
+ ✓ src/components/auth/FormField.test.tsx > FormField > al pasar de con-error a sin-error (rerender), aria-invalid vuelve a 'false' y el alert desaparece 8ms
+ ✓ src/components/auth/FormField.test.tsx > FormField > el label muestra exactamente el texto recibido, distinto de 'Email' 3ms
+ ✓ src/pages/CartPage.test.tsx > CartPage — estado vacío > muestra un mensaje de carrito vacío y un camino de vuelta al catálogo 194ms
+ ✓ src/pages/CartPage.test.tsx > CartPage — estado vacío > no muestra el total ni el botón de vaciar cuando no hay nada que vaciar 12ms
+ ✓ src/pages/CartPage.test.tsx > CartPage — con productos > lista un ítem por producto, como lista accesible 39ms
+ ✓ src/pages/CartPage.test.tsx > CartPage — con productos > muestra el total de unidades y el monto total 10ms
+ ✓ src/pages/CartPage.test.tsx > CartPage — con productos > ofrece el camino al checkout 14ms
+ ✓ src/pages/CheckoutPage.test.tsx > CheckoutPage — compra exitosa > crea la orden con el usuario y el carrito actuales 230ms
+ ✓ src/pages/CheckoutPage.test.tsx > CheckoutPage — compra exitosa > muestra la confirmación con el número de orden 39ms
+ ✓ src/pages/SignupPage.test.tsx > SignupPage > mientras loading es true, muestra el spinner y no el formulario 156ms
+ ✓ src/pages/SignupPage.test.tsx > SignupPage > sin sesión, muestra el título y el formulario de registro 44ms
+ ✓ src/pages/SignupPage.test.tsx > SignupPage > con sesión ya iniciada, redirige a / en vez de mostrar el formulario 9ms
+ ✓ src/pages/SignupPage.test.tsx > SignupPage > muestra un link para ir a /login 17ms
+ ✓ src/pages/SignupPage.test.tsx > SignupPage > sin sesión, muestra el campo Nombre para mostrar 8ms
+ ✓ src/pages/SignupPage.test.tsx > SignupPage > sin sesión, muestra el campo Email 6ms
+ ✓ src/components/Header.test.tsx > Header > mientras el logout está en curso, deshabilita el botón y cambia su texto 66ms
+ ✓ src/components/auth/FormField.test.tsx > FormField > el input es interactuable (se puede escribir) cuando disabled no está presente 96ms
+ ✓ src/components/auth/FormField.test.tsx > FormField > dos FormField con ids distintos no colisionan: cada uno muestra su propio mensaje de error 3ms
+ ✓ src/pages/CheckoutPage.test.tsx > CheckoutPage — compra exitosa > vacía el carrito después de registrar la orden 66ms
+ ✓ src/pages/CheckoutPage.test.tsx > CheckoutPage — la compra falla > muestra un mensaje de error entendible, no el error técnico 54ms
+ ✓ src/pages/CartPage.test.tsx > CartPage — cambiar cantidades > el botón + suma una unidad al producto correcto 77ms
+ ✓ src/components/auth/FormField.test.tsx > FormField > onChange recibe un string vacío al borrar todo el contenido del input 117ms
+ ✓ src/components/Header.test.tsx > Header > si logout() falla, muestra el mensaje de error ya traducido (el que viene en error.message) 43ms
+ ✓ src/components/Header.test.tsx > Header > si logout() falla con algo que no es un Error, muestra un mensaje genérico (no rompe la UI) 58ms
+ ✓ src/components/Header.test.tsx > Header > no muestra ningún mensaje de error antes de intentar cerrar sesión 3ms
+ ✓ src/pages/CheckoutPage.test.tsx > CheckoutPage — la compra falla > NO vacía el carrito si la orden no se pudo crear 54ms
+ ✓ src/pages/CheckoutPage.test.tsx > CheckoutPage — la compra falla > el botón vuelve a habilitarse para poder reintentar 52ms
+ ✓ src/pages/CartPage.test.tsx > CartPage — cambiar cantidades > el botón − resta una unidad 72ms
+ ✓ src/pages/CartPage.test.tsx > CartPage — cambiar cantidades > bajar de 1 a 0 elimina la fila del carrito 74ms
+ ✓ src/pages/CartPage.test.tsx > CartPage — cambiar cantidades > deshabilita el botón + al llegar al máximo de unidades 12ms
+ ✓ src/components/Header.test.tsx > Header > un logout exitoso no deja ningún mensaje de error visible 44ms
+ ✓ src/components/Header.test.tsx > Header > un reintento exitoso limpia el mensaje de error de un intento anterior fallido 102ms
+ ✓ src/components/Header.test.tsx > Header > no recibe ninguna prop: toda la información sale de useAuth() 4ms
+ ✓ src/pages/CheckoutPage.test.tsx > CheckoutPage — la compra falla > limpia el error anterior al reintentar con éxito 102ms
+ ✓ src/pages/CheckoutPage.test.tsx > CheckoutPage — protección contra doble envío > dos clicks disparados antes de que React re-renderice crean UNA sola orden 8ms
+ ✓ src/pages/CheckoutPage.test.tsx > CheckoutPage — protección contra doble envío > mientras se envía, el botón se deshabilita y avisa que está procesando 59ms
+ ✓ src/pages/CheckoutPage.test.tsx > CheckoutPage — carrito vacío > no ofrece confirmar una compra sin productos 3ms
+ ✓ src/pages/CartPage.test.tsx > CartPage — eliminar y vaciar > el botón Eliminar saca solo el producto de esa fila 78ms
+ ✓ src/pages/CartPage.test.tsx > CartPage — eliminar y vaciar > vaciar el carrito pide confirmación antes de borrar nada 64ms
+ ✓ src/pages/CartPage.test.tsx > CartPage — eliminar y vaciar > la confirmación nombra los productos que se van a perder 69ms
+ ✓ src/pages/LoginPage.test.tsx > LoginPage > completar y enviar el formulario desde la página llama a login() con los datos correctos 515ms
+ ✓ src/pages/CartPage.test.tsx > CartPage — eliminar y vaciar > cancelar la confirmación deja el carrito como estaba 116ms
+ ✓ src/pages/CartPage.test.tsx > CartPage — eliminar y vaciar > confirmar vacía el carrito y muestra el estado vacío 102ms
+ ✓ src/services/usersService.test.ts > usersService.getUserProfile > valida los datos crudos con Zod antes de confiar en ellos (rechaza un email con formato inválido) 928ms
+ ✓ src/pages/SignupPage.test.tsx > SignupPage > completar y enviar el formulario desde la página llama a signup() con los datos correctos 871ms
+ ✓ src/pages/LoginPage.test.tsx > LoginPage > tras un login exitoso desde la página, termina mostrando el contenido de Home (navegación real) 509ms
+ ✓ src/features/cart/cartReducer.test.ts > cartReducer — ADD_ITEM > agrega un producto nuevo a un carrito vacío con cantidad 1 3ms
+ ✓ src/features/cart/cartReducer.test.ts > cartReducer — ADD_ITEM > agregar un producto que ya está en el carrito incrementa su cantidad en vez de duplicar la fila 1ms
+ ✓ src/features/cart/cartReducer.test.ts > cartReducer — ADD_ITEM > agregar un producto distinto suma una fila nueva y acumula los totales de ambos 0ms
+ ✓ src/features/cart/cartReducer.test.ts > cartReducer — ADD_ITEM > no supera el máximo de unidades por producto aunque se agregue de nuevo 0ms
+ ✓ src/features/cart/cartReducer.test.ts > cartReducer — ADD_ITEM > redondea el total a 2 decimales (0.1 + 0.2 no debe dar 0.30000000000000004) 0ms
+ ✓ src/features/cart/cartReducer.test.ts > cartReducer — UPDATE_QUANTITY > cambia la cantidad de un producto y recalcula los totales 0ms
+ ✓ src/features/cart/cartReducer.test.ts > cartReducer — UPDATE_QUANTITY > con cantidad 0 elimina el producto del carrito 0ms
+ ✓ src/features/cart/cartReducer.test.ts > cartReducer — UPDATE_QUANTITY > con cantidad negativa también elimina el producto, en vez de dejar un total negativo 0ms
+ ✓ src/features/cart/cartReducer.test.ts > cartReducer — UPDATE_QUANTITY > descarta los decimales de la cantidad (2.7 unidades se guardan como 2) 0ms
+ ✓ src/features/cart/cartReducer.test.ts > cartReducer — UPDATE_QUANTITY > no supera el máximo de unidades por producto 0ms
+ ✓ src/features/cart/cartReducer.test.ts > cartReducer — UPDATE_QUANTITY > deja el estado intacto si el producto no está en el carrito 0ms
+ ✓ src/features/cart/cartReducer.test.ts > cartReducer — REMOVE_ITEM > elimina el producto indicado y deja los demás, recalculando los totales 0ms
+ ✓ src/features/cart/cartReducer.test.ts > cartReducer — REMOVE_ITEM > deja el estado intacto si el producto no está en el carrito 0ms
+ ✓ src/features/cart/cartReducer.test.ts > cartReducer — CLEAR_CART > vacía el carrito y pone los totales en 0 0ms
+ ✓ src/features/cart/cartReducer.test.ts > cartReducer — CLEAR_CART > sobre un carrito ya vacío no rompe ni cambia nada 0ms
+ ✓ src/features/cart/cartReducer.test.ts > cartReducer — inmutabilidad > no muta el estado recibido: el carrito original queda exactamente igual 0ms
+ ✓ src/pages/LoginPage.test.tsx > LoginPage > si login() falla, la página muestra el mensaje de error traducido 549ms
+ ✓ src/pages/LoginPage.test.tsx > LoginPage > loading true tampoco muestra el link a /signup 2ms
+ ✓ src/pages/LoginPage.test.tsx > LoginPage > el título 'Iniciar sesión' es un encabezado de nivel 1 7ms
+ ✓ src/pages/LoginPage.test.tsx > LoginPage > con sesión iniciada, no muestra el link a /signup (la página se reemplaza por el redirect) 2ms
+ ✓ src/pages/LoginPage.test.tsx > LoginPage > con sesión iniciada, no queda ningún spinner colgado en el DOM 2ms
+ ✓ src/pages/LoginPage.test.tsx > LoginPage > loading tiene prioridad sobre user: con loading true y user ya seteado, igual muestra el spinner (no redirige de más) 3ms
+ ✓ src/pages/LoginPage.test.tsx > LoginPage > el link a /signup tiene el texto exacto 'Registrate' 3ms
+ ✓ src/pages/LoginPage.test.tsx > LoginPage > mientras loading es true, no se dispara ninguna llamada a login() 1ms
+ ✓ src/pages/LoginPage.test.tsx > LoginPage > el mensaje del spinner en esta página es 'Verificando sesión...' 1ms
+ ✓ src/pages/LoginPage.test.tsx > LoginPage > enviar el formulario vacío muestra los errores de campo, integrados en la página 68ms
+ ✓ src/pages/LoginPage.test.tsx > LoginPage > spinner y formulario nunca se muestran a la vez 5ms
+ ✓ src/pages/LoginPage.test.tsx > LoginPage > si AuthContext tiene un error de sesión (ej. perfil no encontrado tras un signup interrumpido), la página lo muestra 4ms
+ ✓ src/features/cart/cartStorage.test.ts > loadCartState > devuelve un carrito vacío cuando no hay nada guardado (primera visita) 2ms
+ ✓ src/features/cart/cartStorage.test.ts > loadCartState > recupera un carrito válido guardado previamente 2ms
+ ✓ src/features/cart/cartStorage.test.ts > loadCartState > recalcula los totales si el JSON guardado tiene totales que no coinciden con los ítems 0ms
+ ✓ src/features/cart/cartStorage.test.ts > loadCartState > descarta y borra lo guardado si no cumple el schema (formato de otra versión) 1ms
+ ✓ src/features/cart/cartStorage.test.ts > loadCartState > devuelve un carrito vacío si lo guardado no es JSON válido 1ms
+ ✓ src/features/cart/cartStorage.test.ts > loadCartState > devuelve un carrito vacío si el navegador bloquea el acceso a localStorage 0ms
+ ✓ src/features/cart/cartStorage.test.ts > saveCartState > guarda el carrito serializado bajo la clave versionada 1ms
+ ✓ src/features/cart/cartStorage.test.ts > saveCartState > lo guardado se puede volver a leer con loadCartState (ida y vuelta completa) 0ms
+ ✓ src/features/cart/cartStorage.test.ts > saveCartState > no lanza una excepción si el navegador rechaza la escritura (cuota llena) 1ms
+ ✓ src/pages/LoginPage.test.tsx > LoginPage > sin error de sesión, no muestra ningún alert antes de interactuar con el formulario 2ms
+ ✓ src/features/cart/useCart.test.tsx > useCart — guard del provider > lanza un error claro si se usa fuera de un CartProvider 13ms
+ ✓ src/features/cart/useCart.test.tsx > useCart — estado inicial > arranca con el carrito vacío si no hay nada guardado 8ms
+ ✓ src/features/cart/useCart.test.tsx > useCart — estado inicial > arranca con el carrito precargado que le pasa el test, sin simular clicks 3ms
+ ✓ src/features/cart/useCart.test.tsx > useCart — estado inicial > recupera el carrito guardado en localStorage de una sesión anterior 4ms
+ ✓ src/features/cart/useCart.test.tsx > useCart — acciones > addItem agrega un producto y actualiza los totales 3ms
+ ✓ src/features/cart/useCart.test.tsx > useCart — acciones > addItem del mismo producto dos veces deja una sola fila con cantidad 2 1ms
+ ✓ src/features/cart/useCart.test.tsx > useCart — acciones > updateQuantity cambia la cantidad y recalcula el total 1ms
+ ✓ src/features/cart/useCart.test.tsx > useCart — acciones > updateQuantity a 0 saca el producto del carrito 1ms
+ ✓ src/features/cart/useCart.test.tsx > useCart — acciones > removeItem elimina solo el producto indicado 1ms
+ ✓ src/features/cart/useCart.test.tsx > useCart — acciones > clearCart deja el carrito vacío y los totales en 0 1ms
+ ✓ src/features/cart/useCart.test.tsx > useCart — persistencia > guarda el carrito en localStorage al agregar un producto 1ms
+ ✓ src/features/cart/useCart.test.tsx > useCart — persistencia > el carrito sobrevive a un remonte del provider (simula recargar la página) 2ms
+ ✓ src/pages/SignupPage.test.tsx > SignupPage > tras un signup exitoso desde la página, termina mostrando el contenido de Home (navegación real) 884ms
+ ✓ src/components/auth/LoginForm.test.tsx > LoginForm > no llama a login() si el email está vacío (valida antes de tocar Firebase) 340ms
+ ✓ src/features/cart/components/AddToCartButton.test.tsx > AddToCartButton > el nombre accesible del botón incluye el producto, para poder distinguirlo entre varios 101ms
+ ✓ src/features/cart/components/AddToCartButton.test.tsx > AddToCartButton > al hacer click, el contador del carrito pasa de 0 a 1 60ms
+ ✓ src/pages/LoginPage.test.tsx > LoginPage > tras corregir un error de campo y reenviar con éxito, la página termina mostrando Home 652ms
+ ✓ src/features/cart/components/AddToCartButton.test.tsx > AddToCartButton > hacer click dos veces sobre el mismo producto suma 2 unidades 124ms
+ ✓ src/features/cart/components/AddToCartButton.test.tsx > AddToCartButton > agregar dos productos distintos suma ambos al contador 117ms
+ ✓ src/features/cart/components/AddToCartButton.test.tsx > AddToCartButton > muestra una confirmación en el botón después de agregar 58ms
+ ✓ src/features/cart/components/AddToCartButton.test.tsx > AddToCartButton > la confirmación desaparece sola y el botón vuelve a su texto normal 32ms
+ ✓ src/features/cart/components/AddToCartButton.test.tsx > AddToCartButton > no ofrece agregar un producto sin precio: muestra el motivo en su lugar 5ms
+ ✓ src/services/usersService.test.ts > usersService.getUserProfile > valida los datos crudos con Zod antes de confiar en ellos (rechaza un role fuera del enum) 911ms
+ ✓ src/services/usersService.test.ts > usersService.getUserProfile > no reintenta cuando el documento ya existe en el primer intento 1ms
+ ✓ src/services/usersService.test.ts > usersService.getUserProfile > preserva displayName null al leer un perfil sin nombre para mostrar 1ms
+ ✓ src/components/auth/SignupForm.test.tsx > SignupForm > no llama a signup() si falta el nombre para mostrar 856ms
+ ✓ src/components/auth/LoginForm.test.tsx > LoginForm > no llama a login() si el email tiene formato inválido 513ms
+ ✓ src/services/usersService.test.ts > usersService.getUserProfile > rechaza el documento si falta el campo email 924ms
+ ✓ src/pages/SignupPage.test.tsx > SignupPage > si signup() falla, la página muestra el mensaje de error traducido 883ms
  ✓ src/pages/SignupPage.test.tsx > SignupPage > loading true tampoco muestra el link a /login 2ms
  ✓ src/pages/SignupPage.test.tsx > SignupPage > el título 'Crear cuenta' es un encabezado de nivel 1 5ms
  ✓ src/pages/SignupPage.test.tsx > SignupPage > con sesión iniciada, no muestra el link a /login (la página se reemplaza por el redirect) 1ms
@@ -330,21 +321,22 @@
  ✓ src/pages/SignupPage.test.tsx > SignupPage > el link a /login tiene el texto exacto 'Iniciá sesión' 3ms
  ✓ src/pages/SignupPage.test.tsx > SignupPage > mientras loading es true, no se dispara ninguna llamada a signup() 1ms
  ✓ src/pages/SignupPage.test.tsx > SignupPage > el mensaje del spinner en esta página es 'Verificando sesión...' 1ms
- ✓ src/pages/SignupPage.test.tsx > SignupPage > enviar el formulario vacío muestra los errores de campo, integrados en la página 73ms
+ ✓ src/pages/SignupPage.test.tsx > SignupPage > enviar el formulario vacío muestra los errores de campo, integrados en la página 49ms
  ✓ src/pages/SignupPage.test.tsx > SignupPage > spinner y formulario nunca se muestran a la vez 4ms
  ✓ src/pages/SignupPage.test.tsx > SignupPage > si AuthContext tiene un error de sesión (ej. perfil no encontrado tras un signup interrumpido), la página lo muestra 4ms
- ✓ src/pages/SignupPage.test.tsx > SignupPage > sin error de sesión, no muestra ningún alert antes de interactuar con el formulario 3ms
- ✓ src/features/admin/components/CreateProductForm.test.tsx > CreateProductForm — camino feliz > muestra la confirmación con el producto y su imagen 561ms
- ✓ src/components/auth/LoginForm.test.tsx > LoginForm > si login() falla, muestra el mensaje de error ya traducido y no redirige 613ms
- ✓ src/features/admin/components/CreateProductForm.test.tsx > CreateProductForm — camino feliz > limpia el formulario después de crear el producto 611ms
- ✓ src/components/auth/SignupForm.test.tsx > SignupForm > no llama a signup() si la contraseña no combina letras y números 983ms
- ✓ src/services/usersService.test.ts > usersService.getUserProfile > rechaza createdAt si no es una instancia real de Timestamp (ej. un Date armado a mano) 916ms
- ✓ src/components/auth/LoginForm.test.tsx > LoginForm > limpia el error general del intento anterior al reintentar el envío 659ms
- ✓ src/features/admin/components/CreateProductForm.test.tsx > CreateProductForm — el servidor rechaza la firma > muestra el mensaje del servidor y NO crea el producto 625ms
- ✓ src/pages/SignupPage.test.tsx > SignupPage > tras corregir contraseñas que no coincidían y reenviar con éxito, la página termina mostrando Home 1160ms
- ✓ src/components/auth/SignupForm.test.tsx > SignupForm > no llama a signup() si las contraseñas no coinciden (se valida antes de tocar Firebase) 930ms
- ✓ src/services/usersService.test.ts > usersService.getUserProfile > rechaza displayName vacío ('') porque el schema exige al menos 1 caracter 927ms
- ✓ src/services/usersService.test.ts > usersService.getUserProfile > reintenta con backoff exponencial si el documento todavía no existe (carrera con createUserProfile justo tras un signup) 2ms
+ ✓ src/pages/SignupPage.test.tsx > SignupPage > sin error de sesión, no muestra ningún alert antes de interactuar con el formulario 2ms
+ ✓ src/features/admin/components/CreateProductForm.test.tsx > CreateProductForm — camino feliz > pide la firma y recién después sube la imagen, en ese orden 683ms
+ ✓ src/features/admin/components/CreateProductForm.test.tsx > CreateProductForm — camino feliz > manda el token del usuario y los datos del archivo al pedir la firma 594ms
+ ✓ src/components/auth/LoginForm.test.tsx > LoginForm > no llama a login() si la contraseña está vacía 388ms
+ ✓ src/components/auth/SignupForm.test.tsx > SignupForm > no llama a signup() si el email tiene formato inválido 814ms
+ ✓ src/components/auth/LoginForm.test.tsx > LoginForm > con datos válidos, llama a login() con el email y la contraseña ingresados 514ms
+ ✓ src/services/usersService.test.ts > usersService.getUserProfile > rechaza createdAt si no es una instancia real de Timestamp (ej. un Date armado a mano) 913ms
+ ✓ src/pages/SignupPage.test.tsx > SignupPage > tras corregir contraseñas que no coincidían y reenviar con éxito, la página termina mostrando Home 1114ms
+ ✓ src/features/admin/components/CreateProductForm.test.tsx > CreateProductForm — camino feliz > crea el producto con la URL pública devuelta por el servidor 566ms
+ ✓ src/components/auth/LoginForm.test.tsx > LoginForm > tras un login exitoso, redirige a '/' con replace 520ms
+ ✓ src/components/auth/SignupForm.test.tsx > SignupForm > no llama a signup() si la contraseña tiene menos de 8 caracteres 671ms
+ ✓ src/services/usersService.test.ts > usersService.getUserProfile > rechaza displayName vacío ('') porque el schema exige al menos 1 caracter 908ms
+ ✓ src/services/usersService.test.ts > usersService.getUserProfile > reintenta con backoff exponencial si el documento todavía no existe (carrera con createUserProfile justo tras un signup) 3ms
  ✓ src/services/usersService.test.ts > usersService.getUserProfile > devuelve null (nunca asume un rol por defecto) si el documento no aparece tras agotar los 3 intentos 1ms
  ✓ src/services/usersService.test.ts > usersService.getUserProfile > propaga el último error si TODOS los intentos de getDoc fallan (se agota el backoff) 1ms
  ✓ src/services/usersService.test.ts > usersService.getUserProfile > envuelve en un Error genérico si todos los intentos de getDoc fallan con algo que no es un Error 1ms
@@ -358,42 +350,50 @@
  ✓ src/services/usersService.test.ts > usersService.createUserProfile > usa el uid exacto recibido para construir la referencia del documento, sin importar cuál sea 0ms
  ✓ src/services/usersService.test.ts > usersService.createUserProfile > propaga un Error legible si setDoc falla con un Error real 0ms
  ✓ src/services/usersService.test.ts > usersService.createUserProfile > envuelve en un Error genérico si setDoc falla con algo que no es un Error 0ms
- ✓ src/features/admin/components/CreateProductForm.test.tsx > CreateProductForm — la subida a S3 falla > avisa del error y NO crea el producto sin imagen 627ms
- ✓ src/components/auth/LoginForm.test.tsx > LoginForm > después de un error de campo, escribir de nuevo y reenviar limpia ese error si ya es válido 643ms
- ✓ src/components/auth/LoginForm.test.tsx > LoginForm > no muestra ningún mensaje de error antes de cualquier intento de envío 3ms
+ ✓ src/features/admin/components/CreateProductForm.test.tsx > CreateProductForm — camino feliz > muestra la confirmación con el producto y su imagen 556ms
+ ✓ src/components/auth/LoginForm.test.tsx > LoginForm > mientras se envía, deshabilita los inputs y el botón, y cambia el texto del botón 524ms
+ ✓ src/features/admin/components/CreateProductForm.test.tsx > CreateProductForm — camino feliz > limpia el formulario después de crear el producto 559ms
+ ✓ src/components/auth/SignupForm.test.tsx > SignupForm > no llama a signup() si la contraseña no combina letras y números 893ms
+ ✓ src/components/auth/LoginForm.test.tsx > LoginForm > si login() falla, muestra el mensaje de error ya traducido y no redirige 546ms
+ ✓ src/features/admin/components/CreateProductForm.test.tsx > CreateProductForm — el servidor rechaza la firma > muestra el mensaje del servidor y NO crea el producto 572ms
+ ✓ src/components/auth/LoginForm.test.tsx > LoginForm > limpia el error general del intento anterior al reintentar el envío 433ms
+ ✓ src/components/auth/SignupForm.test.tsx > SignupForm > no llama a signup() si las contraseñas no coinciden (se valida antes de tocar Firebase) 877ms
+ ✓ src/features/admin/components/CreateProductForm.test.tsx > CreateProductForm — la subida a S3 falla > avisa del error y NO crea el producto sin imagen 558ms
+ ✓ src/components/auth/LoginForm.test.tsx > LoginForm > después de un error de campo, escribir de nuevo y reenviar limpia ese error si ya es válido 588ms
+ ✓ src/components/auth/LoginForm.test.tsx > LoginForm > no muestra ningún mensaje de error antes de cualquier intento de envío 2ms
  ✓ src/components/auth/LoginForm.test.tsx > LoginForm > el botón arranca habilitado y con el texto 'Iniciar sesión' antes de cualquier interacción 4ms
- ✓ src/components/auth/LoginForm.test.tsx > LoginForm > un error de validación de campo tampoco dispara la redirección 54ms
- ✓ src/features/admin/components/CreateProductForm.test.tsx > CreateProductForm — validaciones antes de salir a la red > sin imagen no hace ninguna request 487ms
- ✓ src/components/auth/SignupForm.test.tsx > SignupForm > con datos válidos, llama a signup() con email, contraseña y nombre 876ms
- ✓ src/components/auth/LoginForm.test.tsx > LoginForm > si login() falla, los inputs vuelven a habilitarse (no quedan bloqueados para siempre) 633ms
- ✓ src/features/admin/components/CreateProductForm.test.tsx > CreateProductForm — validaciones antes de salir a la red > con el nombre vacío avisa y no sube nada 285ms
- ✓ src/features/admin/components/CreateProductForm.test.tsx > CreateProductForm — validaciones antes de salir a la red > con precio 0 avisa que debe ser mayor a 0 467ms
- ✓ src/components/auth/LoginForm.test.tsx > LoginForm > si login() falla, el botón vuelve a decir 'Iniciar sesión' (no queda pegado en 'Iniciando sesión...') 588ms
+ ✓ src/components/auth/LoginForm.test.tsx > LoginForm > un error de validación de campo tampoco dispara la redirección 68ms
+ ✓ src/features/admin/components/CreateProductForm.test.tsx > CreateProductForm — validaciones antes de salir a la red > sin imagen no hace ninguna request 462ms
+ ✓ src/components/auth/SignupForm.test.tsx > SignupForm > con datos válidos, llama a signup() con email, contraseña y nombre 785ms
+ ✓ src/components/auth/LoginForm.test.tsx > LoginForm > si login() falla, los inputs vuelven a habilitarse (no quedan bloqueados para siempre) 546ms
+ ✓ src/features/admin/components/CreateProductForm.test.tsx > CreateProductForm — validaciones antes de salir a la red > con el nombre vacío avisa y no sube nada 229ms
+ ✓ src/features/admin/components/CreateProductForm.test.tsx > CreateProductForm — validaciones antes de salir a la red > con precio 0 avisa que debe ser mayor a 0 429ms
+ ✓ src/components/auth/LoginForm.test.tsx > LoginForm > si login() falla, el botón vuelve a decir 'Iniciar sesión' (no queda pegado en 'Iniciando sesión...') 567ms
  ✓ src/components/auth/LoginForm.test.tsx > LoginForm > el campo Email usa autoComplete='email' 2ms
  ✓ src/components/auth/LoginForm.test.tsx > LoginForm > el campo Contraseña usa autoComplete='current-password' y type='password' (nunca expone el texto) 2ms
  ✓ src/components/auth/LoginForm.test.tsx > LoginForm > el campo Email es de tipo email 2ms
  ✓ src/components/auth/LoginForm.test.tsx > LoginForm > el formulario usa noValidate (la validación la controla Zod, no el navegador) 2ms
- ✓ src/components/auth/SignupForm.test.tsx > SignupForm > tras un signup exitoso, redirige a '/' con replace 859ms
- ✓ src/features/admin/components/CreateProductForm.test.tsx > CreateProductForm — validaciones antes de salir a la red > rechaza un archivo que no es una imagen permitida 516ms
- ✓ src/components/auth/LoginForm.test.tsx > LoginForm > login() se llama con los valores exactos ingresados, sin transformarlos 728ms
- ✓ src/components/auth/SignupForm.test.tsx > SignupForm > mientras se envía, deshabilita los 4 campos y el botón, y cambia el texto del botón 881ms
- ✓ src/components/auth/LoginForm.test.tsx > LoginForm > si se borra el email después de escribirlo, el envío vuelve a mostrar 'El email es obligatorio.' 601ms
- ✓ src/components/auth/SignupForm.test.tsx > SignupForm > si signup() falla (ej. email ya en uso), muestra el mensaje ya traducido y no redirige 841ms
- ✓ src/components/auth/SignupForm.test.tsx > SignupForm > limpia el error general del intento anterior al reintentar el envío 950ms
- ✓ src/components/auth/SignupForm.test.tsx > SignupForm > acepta una contraseña de exactamente 8 caracteres con letras y números (límite inferior válido) 833ms
+ ✓ src/components/auth/SignupForm.test.tsx > SignupForm > tras un signup exitoso, redirige a '/' con replace 795ms
+ ✓ src/features/admin/components/CreateProductForm.test.tsx > CreateProductForm — validaciones antes de salir a la red > rechaza un archivo que no es una imagen permitida 500ms
+ ✓ src/components/auth/LoginForm.test.tsx > LoginForm > login() se llama con los valores exactos ingresados, sin transformarlos 717ms
+ ✓ src/components/auth/SignupForm.test.tsx > SignupForm > mientras se envía, deshabilita los 4 campos y el botón, y cambia el texto del botón 846ms
+ ✓ src/components/auth/LoginForm.test.tsx > LoginForm > si se borra el email después de escribirlo, el envío vuelve a mostrar 'El email es obligatorio.' 575ms
+ ✓ src/components/auth/SignupForm.test.tsx > SignupForm > si signup() falla (ej. email ya en uso), muestra el mensaje ya traducido y no redirige 879ms
+ ✓ src/components/auth/SignupForm.test.tsx > SignupForm > limpia el error general del intento anterior al reintentar el envío 915ms
+ ✓ src/components/auth/SignupForm.test.tsx > SignupForm > acepta una contraseña de exactamente 8 caracteres con letras y números (límite inferior válido) 835ms
  ✓ src/components/auth/SignupForm.test.tsx > SignupForm > no muestra ningún mensaje de error antes de cualquier intento de envío 2ms
- ✓ src/components/auth/SignupForm.test.tsx > SignupForm > rechaza confirmPassword vacío como su propio error, distinto del error de 'no coinciden' 681ms
- ✓ src/components/auth/SignupForm.test.tsx > SignupForm > no llama a signup() si el email está vacío 567ms
- ✓ src/components/auth/SignupForm.test.tsx > SignupForm > si signup() falla, los 4 campos vuelven a habilitarse (no quedan bloqueados para siempre) 864ms
- ✓ src/components/auth/SignupForm.test.tsx > SignupForm > si signup() falla, el botón vuelve a decir 'Crear cuenta' (no queda pegado en 'Creando cuenta...') 746ms
+ ✓ src/components/auth/SignupForm.test.tsx > SignupForm > rechaza confirmPassword vacío como su propio error, distinto del error de 'no coinciden' 641ms
+ ✓ src/components/auth/SignupForm.test.tsx > SignupForm > no llama a signup() si el email está vacío 544ms
+ ✓ src/components/auth/SignupForm.test.tsx > SignupForm > si signup() falla, los 4 campos vuelven a habilitarse (no quedan bloqueados para siempre) 823ms
+ ✓ src/components/auth/SignupForm.test.tsx > SignupForm > si signup() falla, el botón vuelve a decir 'Crear cuenta' (no queda pegado en 'Creando cuenta...') 749ms
  ✓ src/components/auth/SignupForm.test.tsx > SignupForm > cada campo usa el autoComplete correcto: name, email, new-password (x2) 4ms
  ✓ src/components/auth/SignupForm.test.tsx > SignupForm > los campos de contraseña son type='password' (nunca exponen el texto en pantalla) 3ms
  ✓ src/components/auth/SignupForm.test.tsx > SignupForm > el formulario usa noValidate (la validación la controla Zod, no el navegador) 2ms
- ✓ src/components/auth/SignupForm.test.tsx > SignupForm > tras fallar por contraseñas distintas, corregir confirmPassword y reenviar sí llama a signup() 1177ms
- ✓ src/components/auth/SignupForm.test.tsx > SignupForm > el displayName se pasa exactamente tal cual fue tipeado, con espacios internos incluidos 871ms
+ ✓ src/components/auth/SignupForm.test.tsx > SignupForm > tras fallar por contraseñas distintas, corregir confirmPassword y reenviar sí llama a signup() 1169ms
+ ✓ src/components/auth/SignupForm.test.tsx > SignupForm > el displayName se pasa exactamente tal cual fue tipeado, con espacios internos incluidos 896ms
 
  Test Files  22 passed (22)
       Tests  390 passed (390)
-   Start at  17:14:13
-   Duration  18.02s (transform 1.26s, setup 14.58s, import 6.21s, tests 44.10s, environment 37.28s)
+   Start at  21:30:50
+   Duration  19.67s (transform 1.34s, setup 15.78s, import 6.26s, tests 42.29s, environment 38.25s)
 
