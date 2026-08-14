@@ -46,9 +46,26 @@ export function mapOrderError(error: unknown): OrderError {
 
   if (error instanceof FirebaseError) {
     if (error.code === "permission-denied") {
+      // El mensaje cambió cuando las reglas empezaron a verificar el precio de
+      // cada ítem contra el catálogo.
+      //
+      // Antes, un rechazo de permisos acá casi siempre significaba un problema
+      // de sesión, y el mensaje mandaba a iniciar sesión de nuevo. Ahora la
+      // causa más frecuente es otra y mucho más inocente: el precio de un
+      // producto cambió mientras estaba en el carrito, así que el precio
+      // guardado ya no coincide con el del catálogo y Firestore rechaza la
+      // escritura.
+      //
+      // El mensaje apunta a esa causa —volver al carrito y revisarlo—, que es
+      // una acción que el usuario puede hacer y que efectivamente resuelve el
+      // problema. Mandarlo a iniciar sesión de nuevo lo haría dar vueltas sin
+      // llegar a ningún lado.
+      //
+      // Deliberadamente NO se menciona la verificación de precios: quien haya
+      // manipulado su carrito no debe enterarse de qué fue lo que se detectó.
       return new OrderError(
         ORDER_ERROR_CODES.PERMISSION_DENIED,
-        "No tenés permiso para crear esta orden. Iniciá sesión de nuevo e intentá otra vez.",
+        "No pudimos confirmar la compra. Es posible que algún precio haya cambiado: volvé al carrito, revisalo y probá de nuevo.",
         { cause: error },
       );
     }
