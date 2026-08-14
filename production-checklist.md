@@ -14,7 +14,7 @@
   > 208 módulos, sin errores. El aviso sobre el tamaño del chunk de Firebase (~567 kB) está diagnosticado desde el Homework L4: es el peso irreducible del SDK, ya aislado en su propio chunk para que el navegador pueda cachearlo aparte del código de la app.
 
 - [x] `npm run test` pasa (3 corridas seguidas)
-  > 23 archivos, 417 tests, verde en las tres. Salida completa en [`docs/test-output.txt`](docs/test-output.txt).
+  > 24 archivos, 429 tests, verde en las tres. Salida completa en [`docs/test-output.txt`](docs/test-output.txt).
 
 - [x] `npm run lint` y `npx tsc -b --noEmit` sin errores
   > El type-check cubre los tres proyectos declarados en `tsconfig.json`: `src/`, `scripts/` y `api/`.
@@ -74,16 +74,38 @@
 - [x] Se corrigieron los hallazgos de dos rondas de code review
   > Once hallazgos en total (5 sobre la Vercel Function, 6 sobre el resto), todos corregidos y cubiertos con tests. Ver la sección de notas de debugging.
 
-- [ ] **El precio de la orden se calcula en el servidor**
-  > **No implementado.** Es la limitación de seguridad conocida de este release candidate.
+- [x] **El precio de cada ítem se verifica contra el catálogo**
+  > Era la limitación de seguridad conocida del release candidate, y quedó cerrada.
   >
-  > **El riesgo, con precisión:** el precio de cada ítem viaja desde el navegador. Un usuario logueado que edite `ecommerce:cart:v1` en su `localStorage` puede registrar una orden con precios más bajos que los del catálogo.
+  > **El riesgo que había:** el precio de cada ítem viajaba desde el navegador y nada lo contrastaba con el catálogo. Editando `ecommerce:cart:v1` en el `localStorage` se podía comprar a cualquier precio.
   >
-  > **Lo que sí se cerró** (verificado en producción manipulando el `localStorage` a propósito): no puede hacerla por $0 (`totalPrice > 0`), no puede inyectar campos que la app no espera como un `paid: true` (`keys().hasOnly`), y no puede inflar el documento (tope de 50 líneas). El intento se rechaza con un mensaje genérico, que no le revela a quien lo intenta qué fue lo que se detectó.
+  > **Por qué no se podía cerrar antes:** el lenguaje de reglas no permite recorrer un array ni sumar sus elementos, así que `totalPrice` era inverificable mientras los ítems fueran un campo de la orden.
   >
-  > **Por qué no alcanza con las reglas:** el lenguaje de `firestore.rules` no permite recorrer un array ni sumar sus elementos, así que es imposible verificar ahí que `totalPrice` coincida con los ítems, ni que cada precio sea el del catálogo.
+  > **Lo que lo destrabó:** las reglas **sí** pueden leer otros documentos con `get()`. Los ítems pasaron a ser documentos de una subcolección (`orders/{id}/items/{itemId}`), y así cada uno tiene su propia evaluación de regla:
   >
-  > **La solución completa:** una Vercel Function que reciba únicamente ids y cantidades, lea los precios desde el catálogo, calcule el total y escriba la orden con el SDK de Admin. La regla pasaría entonces a `allow create: if false`, porque el cliente dejaría de escribir órdenes.
+  > ```
+  > request.resource.data.unitPrice == precioDeCatalogo(request.resource.data.productId)
+  > ```
+  >
+  > Los totales dejaron de guardarse: se calculan al leer, a partir de ítems ya verificados. *Lo que no se guarda no se puede falsear.*
+  >
+  > **Costo:** una lectura facturable por ítem al confirmar la compra, que se cobra aunque la regla rechace.
+  >
+  > **Efecto secundario aceptado:** si un admin cambia el precio de un producto, los carritos que ya lo tenían dejan de poder confirmarse. El checkout lo contempla con un mensaje que invita a revisar el carrito.
+  >
+  > **Verificado en producción**, en las dos direcciones:
+  >
+  > | Prueba | Resultado |
+  > |---|---|
+  > | Compra legítima de $131.410 | Orden `rrn7EKW4zawvgJHx8qgC` creada |
+  > | Estructura del documento | Solo `userId`, `status`, `createdAt` — sin totales |
+  > | Ítems en la subcolección | Dos documentos con el precio real |
+  > | `unitPrice` bajado de 75.410 a 100 | **Rechazado** |
+  > | Órdenes tras el intento fallido | **1 sola**: el batch es atómico, no quedó una orden huérfana |
+  >
+  > La primera fila importa tanto como las otras: una regla que bloquea el ataque **y también al usuario legítimo** no es una corrección, es una caída de servicio.
+  >
+  > **Alternativa descartada:** una Vercel Function que calculara el precio con el SDK de Admin. Habría exigido reintroducir `FIREBASE_SERVICE_ACCOUNT_JSON` en Vercel — una credencial con acceso total al proyecto, que se eliminó a propósito al rediseñar el presign. Cambiar un riesgo de precios acotado por un secreto con acceso total es un mal negocio.
 
 - [ ] Vulnerabilidades de dependencias resueltas
   > **Quedan 6 moderadas**, todas la misma: `uuid` a través de `firebase-admin → @google-cloud/storage`. Se dejan a conciencia:
@@ -254,3 +276,21 @@ Did you mean '../../src/constants/uploads.js'?
 ```
 
 Es la nota más útil de todas, porque no arregla un error: **elimina la posibilidad de cometerlo**. Arreglar el bug sin arreglar lo que lo permitió deja el mismo bug esperando a la próxima persona.
+
+### 8. Las reglas no filtran las consultas: las rechazan enteras
+
+**Detectado al verificar en producción** que los ítems de una orden se hubieran escrito bien.
+
+**Síntoma:** leer el documento de la orden con la API REST funcionaba, pero **listar su subcolección devolvía `403 PERMISSION_DENIED`** — aunque la regla es `allow read: if resource.data.userId == request.auth.uid` y todos los documentos cumplían esa condición.
+
+**Causa:** para una consulta (`list`), Firestore **no filtra los resultados por vos**. Evalúa la regla contra la *consulta*, no contra los documentos, y exige que esté acotada de forma que **garantice** que todo lo que pueda devolver cumple la regla. Un listado sin filtro no ofrece esa garantía, así que se rechaza entero.
+
+La misma consulta con el filtro que la regla exige devuelve los datos sin problema:
+
+```js
+where("userId", "==", uid)
+```
+
+**Consecuencia para el futuro, que es lo que vale la pena registrar:** una pantalla de "mis órdenes" **debe** incluir ese `where` en la consulta. No alcanza con confiar en que la regla filtre — no filtra. Y el modo de fallo es engañoso: un `403` que parece un problema de permisos del usuario cuando en realidad es una consulta mal construida.
+
+**Estado:** no es un bug del proyecto. Las reglas y los datos están bien; lo que estaba mal era mi forma de consultarlos al verificar. Queda documentado para que la próxima persona que liste una colección protegida no pierda una tarde con esto.

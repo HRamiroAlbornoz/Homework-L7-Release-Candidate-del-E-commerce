@@ -27,7 +27,7 @@ E-commerce multi-rol con React + TypeScript + Vite, Firestore y Firebase Authent
 
 **Carrito** — reducer puro con totales siempre consistentes, persistencia en `localStorage` validada con Zod, y confirmación antes de vaciar que nombra los productos que se van a perder.
 
-**Checkout** — crea la orden en Firestore con `serverTimestamp()`, con errores estructurados `{ code, message, retryable }` y doble protección contra el envío duplicado.
+**Checkout** — crea la orden en Firestore con `serverTimestamp()`, con errores estructurados `{ code, message, retryable }` y doble protección contra el envío duplicado. **El precio de cada ítem se verifica contra el catálogo** en las reglas de seguridad: manipular el `localStorage` para comprar más barato no funciona.
 
 **Panel de administración** — alta de productos con imagen. El navegador sube el archivo **directo a S3** con una URL firmada por el servidor: la clave de AWS nunca llega al cliente.
 
@@ -137,6 +137,7 @@ El procedimiento completo, con el plan de rollback y las verificaciones, está e
 - **Roles** — un usuario no puede modificar su propio `role`. Lo impide `firestore.rules`, no el frontend.
 - **Mensajes de login** — nunca revelan si un email existe: credenciales inválidas, usuario inexistente y contraseña incorrecta comparten el mismo mensaje.
 - **Dos capas independientes** — `ProtectedRoute`/`AdminRoute` son UX; `firestore.rules` es la protección real contra un cliente malicioso. Las reglas validan además la forma de cada documento.
+- **Precio de las órdenes** — cada línea de la compra es un documento propio (`orders/{id}/items/{itemId}`), y su regla compara el precio contra el del catálogo con `get()`. Los totales no se guardan: se calculan al leer, a partir de líneas ya verificadas. *Lo que no se guarda no se puede falsear.*
 - **Subida de imágenes** — el servidor firma pero nunca ve los bytes. La URL vence en 5 minutos, el `Content-Type` va firmado (para que no se pueda esquivar la whitelist), el nombre del archivo se genera con UUID —nunca el del cliente— y el usuario IAM solo puede `s3:PutObject` bajo un único prefijo.
 - **Verificación de secretos en el bundle** — tras cada build se buscan los secretos en `dist/`. Ver el procedimiento en el checklist.
 
