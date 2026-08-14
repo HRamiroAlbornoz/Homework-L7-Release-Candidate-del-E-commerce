@@ -9,7 +9,7 @@ import { CreateProductForm } from "../features/admin/components/CreateProductFor
 // trabajo futuro: no forman parte del alcance de este release candidate.
 export function AdminPage() {
   return (
-    <div className="page">
+    <div className="page admin-page">
       <h1>Panel de administración</h1>
       <CreateProductForm />
     </div>

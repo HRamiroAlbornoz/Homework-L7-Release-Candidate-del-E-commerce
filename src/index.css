@@ -1035,6 +1035,25 @@ h1 {
   border-radius: 8px;
 }
 
+/* Fila con el botón de confirmar y el enlace de vuelta al carrito.
+   flex-wrap: en una pantalla angosta las dos acciones no entran lado a lado y
+   el enlace baja a su propia línea, en vez de encogerse hasta partir el texto.
+   gap reemplaza a los márgenes: separa los elementos entre sí sin importar
+   cuál de los dos quede primero cuando el contenido se reacomoda. */
+.checkout__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Dentro de la fila, el gap ya se ocupa de la separación. El margen propio del
+   enlace (que sí hace falta cuando aparece solo, en la confirmación y en el
+   carrito vacío) lo desalinearía verticalmente respecto del botón. */
+.checkout__actions .checkout__back-link {
+  margin-top: 0;
+}
+
 .checkout__back-link {
   /* inline-flex + min-height: mismo criterio de área táctil que el resto. */
   display: inline-flex;
@@ -1045,9 +1064,23 @@ h1 {
   font-weight: 600;
 }
 
+/* Panel de administración: una columna angosta, centrada como bloque.
+   .page mide 1100px, pensado para una grilla de productos. El panel tiene una
+   sola tarjeta de formulario, así que con ese ancho el <h1> se estiraba a lo
+   largo de toda la pantalla y dejaba media página vacía al costado.
+   Se acota la COLUMNA y no la tarjeta: si se centrara solo la tarjeta, el
+   título seguiría arrancando en el borde izquierdo y cada elemento quedaría en
+   un eje distinto. Acotando la columna, los dos comparten el mismo borde y el
+   conjunto se centra gracias al "margin: 0 auto" que .page ya trae. */
+.admin-page {
+  max-width: 560px;
+}
+
 /* Formulario de alta de productos (panel de administración) */
 .create-product-form {
-  max-width: 480px;
+  /* Sin max-width propio: la tarjeta ocupa todo el ancho de .admin-page. Así
+     queda siempre alineada con el <h1> en cualquier breakpoint, en vez de
+     depender de que dos anchos fijos coincidan con el padding de turno. */
   margin-top: 24px;
   padding: 24px;
   background: var(--surface);
