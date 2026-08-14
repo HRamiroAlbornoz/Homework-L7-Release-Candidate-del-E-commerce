@@ -14,7 +14,7 @@
   > 208 módulos, sin errores. El aviso sobre el tamaño del chunk de Firebase (~567 kB) está diagnosticado desde el Homework L4: es el peso irreducible del SDK, ya aislado en su propio chunk para que el navegador pueda cachearlo aparte del código de la app.
 
 - [x] `npm run test` pasa (3 corridas seguidas)
-  > 22 archivos, 390 tests, verde en las tres. Salida completa en [`docs/test-output.txt`](docs/test-output.txt).
+  > 23 archivos, 417 tests, verde en las tres. Salida completa en [`docs/test-output.txt`](docs/test-output.txt).
 
 - [x] `npm run lint` y `npx tsc -b --noEmit` sin errores
   > El type-check cubre los tres proyectos declarados en `tsconfig.json`: `src/`, `scripts/` y `api/`.
@@ -25,6 +25,8 @@
 
 - [x] **La suite pasa con el Wi-Fi desconectado**
   > Verificado cortando la conexión de red por completo: **390 tests en verde, 17.83s** — prácticamente el mismo tiempo que con internet, lo que confirma que ningún test estaba esperando una respuesta remota.
+  >
+  > (Eran 390 al momento de esa medición; los 27 tests que se sumaron después, al corregir los hallazgos del code review, tampoco tocan la red: mockean el SDK o usan MSW.)
   >
   > Dos verificaciones más apuntan a lo mismo desde otro ángulo: la suite pasa **sin archivo `.env`**, y el CI la corre en una máquina limpia sin ningún secreto configurado.
 
@@ -68,6 +70,20 @@
 
 - [x] Las reglas de Firestore están desplegadas y son la protección real
   > `firebase deploy --only firestore:rules,firestore:indexes`. Impiden que un usuario se autoasigne el rol admin, que cree órdenes a nombre de otro, y validan la forma de cada documento.
+
+- [x] Se corrigieron los hallazgos de dos rondas de code review
+  > Once hallazgos en total (5 sobre la Vercel Function, 6 sobre el resto), todos corregidos y cubiertos con tests. Ver la sección de notas de debugging.
+
+- [ ] **El precio de la orden se calcula en el servidor**
+  > **No implementado.** Es la limitación de seguridad conocida de este release candidate.
+  >
+  > **El riesgo, con precisión:** el precio de cada ítem viaja desde el navegador. Un usuario logueado que edite `ecommerce:cart:v1` en su `localStorage` puede registrar una orden con precios más bajos que los del catálogo.
+  >
+  > **Lo que sí se cerró** (verificado en producción manipulando el `localStorage` a propósito): no puede hacerla por $0 (`totalPrice > 0`), no puede inyectar campos que la app no espera como un `paid: true` (`keys().hasOnly`), y no puede inflar el documento (tope de 50 líneas). El intento se rechaza con un mensaje genérico, que no le revela a quien lo intenta qué fue lo que se detectó.
+  >
+  > **Por qué no alcanza con las reglas:** el lenguaje de `firestore.rules` no permite recorrer un array ni sumar sus elementos, así que es imposible verificar ahí que `totalPrice` coincida con los ítems, ni que cada precio sea el del catálogo.
+  >
+  > **La solución completa:** una Vercel Function que reciba únicamente ids y cantidades, lea los precios desde el catálogo, calcule el total y escriba la orden con el SDK de Admin. La regla pasaría entonces a `allow create: if false`, porque el cliente dejaría de escribir órdenes.
 
 - [ ] Vulnerabilidades de dependencias resueltas
   > **Quedan 6 moderadas**, todas la misma: `uuid` a través de `firebase-admin → @google-cloud/storage`. Se dejan a conciencia:
@@ -203,3 +219,38 @@ El orden importa: primero se restablece el servicio, después se busca la causa.
 **Estado:** no afecta a la entrega. El CI —que descarga los archivos una vez y recién después ejecuta, sin escrituras concurrentes— nunca lo manifestó. Si aparece localmente, volver a correr la suite.
 
 Se registra igual, y sin conclusión forzada: **un problema que no se pudo reproducir se documenta como hipótesis, no como causa.** Escribir "era el antivirus" sin haberlo demostrado le haría creer al próximo que el asunto está cerrado.
+
+### 6. Un total de $0 registrable manipulando el localStorage
+
+**Detectado por:** code review (`/code-review high 1`), no por los tests.
+
+**Causa:** la regla de creación de `orders` validaba `totalPrice >= 0` y no restringía qué campos podía traer el documento. Y una defensa propia lo volvía invisible: `loadCartState` recalcula los totales a partir de los ítems, así que un `unitPrice: 0` editado a mano en el `localStorage` producía un estado **internamente coherente** que pasaba la validación de Zod sin problema.
+
+La lección: **recalcular no es lo mismo que verificar.** Los totales eran consistentes con los ítems; lo que nunca se comprobó fue que los ítems tuvieran el precio real.
+
+**Corrección:** `keys().hasOnly([...])` para rechazar campos ajenos, tope de 50 líneas por orden, y `totalPrice > 0`.
+
+**Verificado en producción**, en las dos direcciones:
+
+| Escenario | Resultado |
+|---|---|
+| Compra legítima de $75.410 | Orden `oo4OoRqye0rLpluUj0zr` creada ✅ |
+| `localStorage` manipulado a `unitPrice: 0` | Rechazado por Firestore, con mensaje genérico ✅ |
+
+**Lo que queda abierto:** los precios distintos de cero siguen viniendo del cliente. Ver el ítem sin tildar en la sección de seguridad.
+
+### 7. Una configuración de TypeScript que permitía el bug de la nota 1
+
+**Detectado por:** code review, al revisar `tsconfig.api.json`.
+
+**Causa:** `moduleResolution: "bundler"` para código que corre como ESM real de Node. Con esa opción, un import relativo sin extensión pasa `tsc`, el lint y el CI, y recién falla en producción — que es exactamente lo que había ocurrido en la nota 1, corregido a mano sin tocar la causa.
+
+**Corrección:** `nodenext`. Verificado quitando la extensión a propósito:
+
+```
+error TS2835: Relative import paths need explicit file extensions in ECMAScript
+imports when '--moduleResolution' is 'node16' or 'nodenext'.
+Did you mean '../../src/constants/uploads.js'?
+```
+
+Es la nota más útil de todas, porque no arregla un error: **elimina la posibilidad de cometerlo**. Arreglar el bug sin arreglar lo que lo permitió deja el mismo bug esperando a la próxima persona.
